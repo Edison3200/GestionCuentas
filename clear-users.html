@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Limpiar Usuarios - Cuentas Tracker</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        h1 {
+            color: #dc3545;
+            margin-bottom: 20px;
+        }
+        .warning {
+            background-color: #fff3cd;
+            border: 1px solid #ffeaa7;
+            color: #856404;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+        button {
+            background-color: #dc3545;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px;
+        }
+        button:hover {
+            background-color: #c82333;
+        }
+        .success {
+            background-color: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+        .info {
+            background-color: #d1ecf1;
+            border: 1px solid #bee5eb;
+            color: #0c5460;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+        .back-button {
+            background-color: #007bff;
+            margin-top: 20px;
+        }
+        .back-button:hover {
+            background-color: #0056b3;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🗑️ Limpiar Todos los Usuarios</h1>
+        
+        <div class="warning">
+            <strong>⚠️ ADVERTENCIA:</strong><br>
+            Esta acción eliminará TODOS los usuarios y sus datos asociados de forma permanente.<br>
+            Esto incluye:
+            <ul style="text-align: left; margin-top: 10px;">
+                <li>Todos los usuarios registrados</li>
+                <li>Todas las cuentas de cada usuario</li>
+                <li>Todo el historial diario</li>
+                <li>Configuraciones personalizadas</li>
+                <li>Sesiones activas</li>
+            </ul>
+        </div>
+
+        <div id="current-data" class="info">
+            <strong>Datos actuales encontrados:</strong>
+            <div id="data-summary"></div>
+        </div>
+
+        <button onclick="clearAllData()" id="clear-btn">
+            🗑️ ELIMINAR TODOS LOS DATOS
+        </button>
+
+        <div id="result"></div>
+
+        <button onclick="goToApp()" class="back-button">
+            🏠 Ir a la Aplicación
+        </button>
+    </div>
+
+    <script>
+        function showCurrentData() {
+            const usuarios = JSON.parse(localStorage.getItem('usuarios-auth')) || [];
+            const sesionActiva = localStorage.getItem('sesion-activa');
+            
+            let summary = '<div style="text-align: left; margin-top: 10px;">';
+            
+            if (usuarios.length > 0) {
+                summary += `<strong>Usuarios encontrados (${usuarios.length}):</strong><br>`;
+                usuarios.forEach(user => {
+                    summary += `• ${user.usuario} ${user.esSuperUsuario ? '👑 (Super Usuario)' : ''}<br>`;
+                });
+            } else {
+                summary += '<strong>No hay usuarios registrados</strong><br>';
+            }
+            
+            if (sesionActiva) {
+                const sesion = JSON.parse(sesionActiva);
+                summary += `<br><strong>Sesión activa:</strong> ${sesion.usuario}`;
+            }
+            
+            // Contar datos adicionales
+            let totalCuentas = 0;
+            let totalHistorial = 0;
+            
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                if (key.startsWith('cuentas-')) {
+                    const cuentas = JSON.parse(localStorage.getItem(key)) || [];
+                    totalCuentas += cuentas.length;
+                }
+                if (key.startsWith('historial-diario-')) {
+                    const historial = JSON.parse(localStorage.getItem(key)) || {};
+                    totalHistorial += Object.keys(historial).length;
+                }
+            }
+            
+            if (totalCuentas > 0) {
+                summary += `<br><strong>Total de cuentas:</strong> ${totalCuentas}`;
+            }
+            if (totalHistorial > 0) {
+                summary += `<br><strong>Días de historial:</strong> ${totalHistorial}`;
+            }
+            
+            summary += '</div>';
+            
+            document.getElementById('data-summary').innerHTML = summary;
+        }
+
+        function clearAllData() {
+            if (!confirm('¿Estás COMPLETAMENTE SEGURO de que quieres eliminar TODOS los datos?\n\nEsta acción NO se puede deshacer.')) {
+                return;
+            }
+
+            if (!confirm('ÚLTIMA CONFIRMACIÓN:\n\nSe eliminarán todos los usuarios, cuentas, historiales y configuraciones.\n\n¿Continuar?')) {
+                return;
+            }
+
+            try {
+                // Lista de todas las claves relacionadas con la aplicación
+                const keysToRemove = [];
+                
+                for (let i = 0; i < localStorage.length; i++) {
+                    const key = localStorage.key(i);
+                    if (key && (
+                        key === 'usuarios-auth' ||
+                        key === 'sesion-activa' ||
+                        key === 'usuarios' ||
+                        key.startsWith('cuentas-') ||
+                        key.startsWith('historial-diario-') ||
+                        key.startsWith('horaReinicio-') ||
+                        key.startsWith('ultimaFechaReinicio-')
+                    )) {
+                        keysToRemove.push(key);
+                    }
+                }
+
+                // Eliminar todas las claves encontradas
+                keysToRemove.forEach(key => {
+                    localStorage.removeItem(key);
+                });
+
+                document.getElementById('result').innerHTML = `
+                    <div class="success">
+                        <strong>✅ ¡Datos eliminados exitosamente!</strong><br>
+                        Se eliminaron ${keysToRemove.length} elementos del almacenamiento.<br><br>
+                        <strong>Elementos eliminados:</strong><br>
+                        ${keysToRemove.map(key => `• ${key}`).join('<br>')}
+                        <br><br>
+                        <strong>Ahora puedes crear el primer usuario que será automáticamente Super Usuario.</strong>
+                    </div>
+                `;
+
+                document.getElementById('clear-btn').style.display = 'none';
+                showCurrentData();
+
+            } catch (error) {
+                document.getElementById('result').innerHTML = `
+                    <div style="background-color: #f8d7da; border: 1px solid #f5c6cb; color: #721c24; padding: 15px; border-radius: 5px;">
+                        <strong>❌ Error al eliminar datos:</strong><br>
+                        ${error.message}
+                    </div>
+                `;
+            }
+        }
+
+        function goToApp() {
+            // Intentar abrir la aplicación en el puerto común de Vite
+            window.open('http://localhost:5173', '_blank');
+        }
+
+        // Mostrar datos actuales al cargar la página
+        showCurrentData();
+    </script>
+</body>
+</html>
