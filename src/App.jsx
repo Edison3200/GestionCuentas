@@ -450,9 +450,20 @@ function App() {
           
           <div className="card">
           <div className="card-header">
-          <div className="flex justify-between items-center">
-          <h2 className="text-xl font-bold text-gray-800">Gestión de Cuentas</h2>
-          <div className="flex gap-3">
+            <div className="flex items-center w-full">
+              <div className="flex-none">
+                <h2 className="text-xl font-bold text-gray-800">Gestión de Cuentas</h2>
+              </div>
+              <div className="flex-1 flex justify-center">
+                {faltantesHoy === 0 && (
+                  <div className="alert alert-success flex items-center gap-2 fade-in text-center" style={{fontSize:'1.1rem', maxWidth:'320px', marginBottom: 0, padding: '0.25rem 1rem', height: 'auto'}}>
+                    <span className="fire-effect" role="img" aria-label="fuego">🔥</span>
+                    <span style={{display:'inline-block', minWidth:'120px'}}>¡Has ingresado a todas las cuentas hoy!</span>
+                    <span className="fire-effect" role="img" aria-label="fuego">🔥</span>
+                  </div>
+                )}
+              </div>
+              <div className="flex gap-3 flex-none">
           <button
           onClick={() => setFormVisible(true)}
           className="btn btn-success flex items-center gap-2"
@@ -654,13 +665,6 @@ function ResumenStats({ faltantesHoy, totalPjs, totalMedallas, tiempoRestante, s
           </div>
         )}
         {/* Mensaje especial si todas las cuentas han sido ingresadas */}
-        {!showCongrats && faltantesHoy === 0 && (
-          <div className="alert alert-success flex items-center gap-2 mb-4 fade-in justify-center text-center mx-auto" style={{fontSize:'1.1rem', maxWidth:'420px'}}>
-            <span className="fire-effect" role="img" aria-label="fuego">🔥</span>
-            <span style={{display:'inline-block', minWidth:'140px'}}>¡Has ingresado a todas las cuentas hoy!</span>
-            <span className="fire-effect" role="img" aria-label="fuego">🔥</span>
-          </div>
-        )}
         <div className="stats-grid">
           <div className={`stat-card stat-danger${faltantesHoy > 0 ? ' alert-aura' : ''}`}>
             <div className="stat-value">{formatNumber(faltantesHoy)}</div>

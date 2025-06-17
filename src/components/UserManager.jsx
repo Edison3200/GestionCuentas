@@ -63,7 +63,17 @@ function UserManager({ usuarioActual, setUsuarioActual, onUsuarioChange }) {
   };
 
   return (
-    <div className="bg-white p-4 rounded-lg shadow-md border border-gray-200 mb-6">
+    <div className="max-w-2xl mx-auto">
+      <div className="flex flex-col items-center mb-6">
+        <div className="flex items-center gap-3 mb-2">
+          <FaUser className="text-blue-500" style={{fontSize:'2.2rem'}} />
+          <span className="text-2xl font-bold text-gray-800">Gestión de cuentas</span>
+        </div>
+        <div className="text-gray-600 text-center text-base max-w-xl mb-2">
+          <span>Administra los usuarios de tu aplicación. Crea, selecciona o elimina perfiles para separar tus cuentas y progresos.</span><br/>
+          <span>Ideal para compartir el sistema o llevar registros independientes de tus cuentas y personajes.</span>
+        </div>
+      </div>
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-lg font-semibold flex items-center gap-2">
           <FaUser className="text-blue-500" />
@@ -71,10 +81,17 @@ function UserManager({ usuarioActual, setUsuarioActual, onUsuarioChange }) {
         </h3>
         <button
           onClick={() => setMostrarFormulario(!mostrarFormulario)}
-          className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded flex items-center gap-2 text-sm"
+          className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded flex items-center gap-2 text-sm shadow-md"
         >
           <FaPlus /> Nuevo Usuario
         </button>
+      </div>
+      <div className="mb-4 text-gray-500 text-sm">
+        <ul className="list-disc pl-5">
+          <li>El usuario define un espacio privado para tus cuentas y personajes.</li>
+          <li>Puedes eliminar usuarios que no uses, pero se perderán sus datos.</li>
+          <li>Recomendado usar nombres únicos y fáciles de recordar.</li>
+        </ul>
       </div>
 
       {mostrarFormulario && (
