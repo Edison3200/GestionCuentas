@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { FaUser, FaEnvelope, FaUsers, FaTimes, FaSave } from 'react-icons/fa';
 import ValidationMessage from './ValidationMessage';
 
@@ -6,6 +7,15 @@ function AccountForm({ nuevaCuenta, setNuevaCuenta, agregarCuenta, cancelar, cue
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [hasAttemptedSubmit, setHasAttemptedSubmit] = useState(false);
+
+  // Bloquear scroll del body cuando el modal está abierto
+  useEffect(() => {
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = originalOverflow;
+    };
+  }, []);
   
   // Obtener correos únicos existentes
   const correosExistentes = Array.from(new Set(cuentas.map(c => c.correo).filter(email => email.trim() !== '')));
@@ -88,9 +98,9 @@ function AccountForm({ nuevaCuenta, setNuevaCuenta, agregarCuenta, cancelar, cue
 
   const isFormValid = nuevaCuenta.nombre.trim() !== '';
 
-  return (
-    <div className="modal-overlay">
-      <div className="modal-content modal-form">
+  return createPortal(
+    <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black bg-opacity-40">
+      <div className="bg-white rounded-xl shadow-lg max-w-lg w-full p-0 m-0 relative">
         <div className="card-header flex items-center justify-between">
           <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
             <FaUser className="text-blue-600" />
@@ -148,7 +158,15 @@ function AccountForm({ nuevaCuenta, setNuevaCuenta, agregarCuenta, cancelar, cue
                 value={nuevaCuenta.correo}
                 onChange={e => handleInputChange('correo', e.target.value)}
                 onKeyPress={handleKeyPress}
+                list="correos-sugeridos"
               />
+              {correosExistentes.length > 0 && (
+                <datalist id="correos-sugeridos">
+                  {correosExistentes.map(correo => (
+                    <option value={correo} key={correo} />
+                  ))}
+                </datalist>
+              )}
             </div>
             <div className="form-info">
               {correosExistentes.length > 0 && (
@@ -215,7 +233,8 @@ function AccountForm({ nuevaCuenta, setNuevaCuenta, agregarCuenta, cancelar, cue
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
 

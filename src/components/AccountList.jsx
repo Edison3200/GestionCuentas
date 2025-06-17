@@ -21,7 +21,8 @@ function AccountList({
   eliminarCuenta,
   eliminarPj,
   editarPj,
-  mostrarSoloCorreos
+  mostrarSoloCorreos,
+  eliminarCuentasPorCorreo
 }) {
   return (
     <>
@@ -31,14 +32,26 @@ function AccountList({
           className={`mb-6 p-4 rounded ${coloresDisponibles[idx % coloresDisponibles.length]} shadow-md`}
         >
           <h2 className="text-lg font-bold mb-4 truncate flex justify-between items-center">
-            <span>Correo: {correo}</span>
+            <span>Correo: {correo}
+              {mostrarSoloCorreos && (
+                <button
+                  onClick={() => eliminarCuentasPorCorreo(correo)}
+                  className="ml-2 px-2 py-1 bg-red-500 text-white rounded hover:bg-red-700 text-xs"
+                  title="Eliminar todas las cuentas de este correo"
+                >
+                  Eliminar correo
+                </button>
+              )}
+            </span>
             {mostrarSoloCorreos && (
-              <span className="text-xs text-gray-600">
+              <span className="text-lg text-gray-800 font-semibold">
                 {formatNumber(grupo.length)} {grupo.length === 1 ? 'cuenta' : 'cuentas'} | 
-                {' '}{formatCompactNumber(grupo.reduce((total, cuenta) => total + cuenta.pejotas.length, 0))} PJs | 
-                {' '}{formatCompactNumber(grupo.reduce((total, cuenta) => 
+                {' '}
+                <span className="text-blue-700">{formatCompactNumber(grupo.reduce((total, cuenta) => total + cuenta.pejotas.length, 0))} PJs</span> | 
+                {' '}
+                <span className="text-yellow-600">{formatCompactNumber(grupo.reduce((total, cuenta) => 
                   total + cuenta.pejotas.reduce((sum, pj) => sum + (parseInt(pj.medallas) || 0), 0), 0
-                ))} 🏅
+                ))} 🏅</span>
               </span>
             )}
           </h2>

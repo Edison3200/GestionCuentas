@@ -70,7 +70,7 @@ function PjDetailsModal({
 
   return (
     <div className="modal-overlay">
-      <div className="modal-content max-w-7xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+      <div className="modal-content max-w-[1800px] w-full mx-2 sm:mx-8 max-h-[96vh] min-h-[80vh] overflow-y-auto p-2 sm:p-8">
         {/* Header */}
         <div className="card-header flex items-center justify-between sticky top-0 bg-white z-10 border-b">
           <div className="flex items-center gap-3">
@@ -124,110 +124,76 @@ function PjDetailsModal({
                 <FaPlus className="w-4 h-4" />
                 Agregar PJ
               </button>
-              {cuenta.pejotas.length > 6 && (
-                <button
-                  onClick={() => setMostrarTodosPjs(!mostrarTodosPjs)}
-                  className="px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded text-sm flex items-center gap-2 transition-colors"
-                >
-                  {mostrarTodosPjs ? (
-                    <>
-                      Ver menos <FaChevronUp className="text-sm" />
-                    </>
-                  ) : (
-                    <>
-                      Ver más <FaChevronDown className="text-sm" />
-                    </>
-                  )}
-                </button>
-              )}
             </div>
           </div>
           
           {/* Grid de PJs mejorado */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-3 gap-6">
             {(mostrarTodosPjs ? cuenta.pejotas : cuenta.pejotas.slice(0, 8)).map((pj, i) => (
-              <div key={i} className="relative border border-gray-200 rounded-xl bg-white shadow-md hover:shadow-lg transition-all duration-200 min-h-[280px] flex flex-col">
-                {/* Header del PJ con botón eliminar */}
+              <div key={i} className="relative border border-gray-200 rounded-xl bg-white shadow-md min-h-[260px] flex flex-col">
+                {/* Botón eliminar en la esquina de la cápsula */}
+                <button
+                  className="absolute top-4 right-4 text-red-400 hover:text-red-600 hover:bg-red-50 z-20 p-2 rounded-full transition-colors duration-200"
+                  onClick={() => eliminarPj(cuenta.id, i)}
+                  title="Eliminar PJ"
+                  style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.08)' }}
+                >
+                  <FaTimes className="text-base" />
+                </button>
+                {/* Header del PJ */}
                 <div className="bg-gradient-to-r from-blue-50 to-purple-50 px-4 py-4 border-b border-gray-100 relative flex-shrink-0">
-                  <button
-                    className="absolute top-3 right-3 text-red-400 hover:text-red-600 hover:bg-red-50 z-10 p-2 rounded-full transition-colors duration-200"
-                    onClick={() => eliminarPj(cuenta.id, i)}
-                    title="Eliminar PJ"
-                  >
-                    <FaTimes className="text-sm" />
-                  </button>
-                  
                   {/* Nombre del PJ */}
-                  <div className="flex items-center gap-3 pr-10">
-                    <div className="flex items-center justify-center w-10 h-10 bg-blue-100 rounded-full flex-shrink-0">
-                      <FaUserNinja className="text-blue-600 text-lg" />
-                    </div>
-                    <input
-                      className="flex-1 px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent min-w-0 text-base font-semibold bg-white"
-                      value={pj.nombre}
-                      onChange={e => editarPj(cuenta.id, i, 'nombre', e.target.value)}
-                      placeholder="Nombre del PJ"
-                    />
-                  </div>
+                  <input
+                    className="w-full px-3 py-2 border border-blue-200 rounded focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent min-w-0 text-sm font-semibold bg-white"
+                    value={pj.nombre}
+                    onChange={e => editarPj(cuenta.id, i, 'nombre', e.target.value)}
+                    placeholder="Nombre del PJ"
+                    style={{ fontSize: '0.98rem' }}
+                  />
                 </div>
-                
                 {/* Contenido del PJ */}
-                <div className="p-4 space-y-4 flex-grow">
+                <div className="p-4 space-y-3 flex-grow">
                   {/* Medallas */}
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-3">
-                      <div className="flex items-center justify-center w-10 h-10 bg-yellow-100 rounded-full flex-shrink-0">
-                        <FaMedal className="text-yellow-600 text-lg" />
-                      </div>
-                      <label className="text-base font-semibold text-gray-700">Medallas</label>
-                    </div>
-                    <input
-                      className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-transparent text-center text-lg font-bold bg-yellow-50"
-                      type="number"
-                      min="0"
-                      value={pj.medallas}
-                      onChange={e => editarPj(cuenta.id, i, 'medallas', e.target.value)}
-                      placeholder="0"
-                    />
-                  </div>
-                  
-                  {/* Notas desplegables */}
-                  <div className="space-y-2 flex-grow">
-                    <div className="flex items-center gap-3">
-                      <div className="flex items-center justify-center w-10 h-10 bg-green-100 rounded-full flex-shrink-0">
-                        <FaStickyNote className="text-green-600 text-lg" />
-                      </div>
-                      <button
-                        onClick={() => toggleNotasPj(i)}
-                        className="flex-1 px-4 py-3 border border-gray-200 rounded-lg focus:outline-none hover:border-green-500 hover:bg-green-50 bg-white flex items-center justify-between min-w-0 text-base transition-colors duration-200"
-                      >
-                        <span className="truncate font-semibold">
-                          Notas {pj.notas.trim() ? '📝' : ''}
-                        </span>
-                        {pjNotasAbiertas[i] ? 
-                          <FaChevronUp className="text-sm flex-shrink-0 text-green-600" /> : 
-                          <FaChevronDown className="text-sm flex-shrink-0 text-green-600" />
-                        }
-                      </button>
-                    </div>
-                    
-                    {/* Área de notas desplegable */}
-                    {pjNotasAbiertas[i] && (
-                      <div className="fade-in">
-                        <textarea
-                          className="w-full px-4 py-3 text-base border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent resize-none bg-green-50"
-                          rows="4"
-                          value={pj.notas}
-                          onChange={e => editarPj(cuenta.id, i, 'notas', e.target.value)}
-                          placeholder="Escribe notas sobre este PJ..."
-                        />
-                      </div>
-                    )}
-                  </div>
+                  <input
+                    className="w-full px-3 py-2 border border-yellow-200 rounded focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-transparent text-center text-sm font-bold bg-yellow-50"
+                    type="number"
+                    min="0"
+                    value={pj.medallas}
+                    onChange={e => editarPj(cuenta.id, i, 'medallas', e.target.value)}
+                    placeholder="Medallas"
+                    style={{ fontSize: '0.98rem' }}
+                  />
+                  {/* Notas SIEMPRE visibles */}
+                  <textarea
+                    className="w-full px-3 py-2 text-sm border border-green-200 rounded focus:outline-none focus:ring-2 focus:ring-green-400 focus:border-transparent resize-vertical bg-green-50"
+                    rows="3"
+                    value={pj.notas}
+                    onChange={e => editarPj(cuenta.id, i, 'notas', e.target.value)}
+                    placeholder="Notas del PJ..."
+                    style={{ fontSize: '0.98rem' }}
+                  />
                 </div>
               </div>
             ))}
           </div>
+          {cuenta.pejotas.length > 6 && (
+            <div className="flex justify-center mt-6">
+              <button
+                onClick={() => setMostrarTodosPjs(!mostrarTodosPjs)}
+                className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded text-sm flex items-center gap-2 transition-colors"
+              >
+                {mostrarTodosPjs ? (
+                  <>
+                    Ver menos <FaChevronUp className="text-sm" />
+                  </>
+                ) : (
+                  <>
+                    Ver más <FaChevronDown className="text-sm" />
+                  </>
+                )}
+              </button>
+            </div>
+          )}
 
           {cuenta.pejotas.length === 0 && (
             <div className="text-center py-12">

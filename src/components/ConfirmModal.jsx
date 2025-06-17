@@ -27,8 +27,8 @@ function ConfirmModal({ isOpen, message, onConfirm, onCancel, type = 'danger', c
   };
 
   return (
-    <div className="modal-overlay">
-      <div className="modal-content max-w-md">
+    <div className="modal-overlay z-[9999]" style={{zIndex: 9999}}>
+      <div className="modal-content max-w-md z-[9999]" style={{zIndex: 9999}}>
         <div className="card-body text-center space-y-4">
           <div className="flex justify-center">
             {getIcon()}
@@ -45,18 +45,18 @@ function ConfirmModal({ isOpen, message, onConfirm, onCancel, type = 'danger', c
 
         <div className="card-footer flex justify-center gap-4">
           <button
-            onClick={onCancel}
-            className="btn btn-secondary flex items-center gap-2"
-          >
-            <FaTimes className="w-4 h-4" />
-            {cancelText}
-          </button>
-          <button
             onClick={onConfirm}
             className={`${getConfirmButtonClass()} flex items-center gap-2`}
           >
             <FaCheck className="w-4 h-4" />
             {confirmText}
+          </button>
+          <button
+            onClick={onCancel}
+            className="btn btn-secondary flex items-center gap-2"
+          >
+            <FaTimes className="w-4 h-4" />
+            {cancelText}
           </button>
         </div>
       </div>

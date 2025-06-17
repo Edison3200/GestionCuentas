@@ -15,6 +15,9 @@ import LoginForm from './components/LoginForm';
 import SuperUserManager from './components/SuperUserManager';
 import ValidationMessage from './components/ValidationMessage';
 import PjDetailsModal from './components/PjDetailsModal';
+import WeekCalendar from './components/WeekCalendar';
+import WeekCalendarCompact from './components/WeekCalendarCompact';
+import AboutPage from './components/AboutPage';
 import { formatNumber, formatCompactNumber } from './utils/formatters';
 import './index.css';
 
@@ -94,6 +97,9 @@ function App() {
     return () => clearInterval(interval);
   }, [usuarioLogueado, usuarioActual]);
 
+  // Detectar zona horaria local del usuario
+  const zonaHorariaLocal = Intl.DateTimeFormat().resolvedOptions().timeZone;
+
   // Efecto: Cargar cuentas y hora de reinicio
   useEffect(() => {
     if (!usuarioLogueado || !usuarioActual) return;
@@ -106,9 +112,9 @@ function App() {
     }
     // Reinicio diario: limpiar ultimoIngreso si corresponde
     const ultimaFechaReinicio = localStorage.getItem(`ultimaFechaReinicio-${usuarioActual}`) || '';
-    const ahoraCET = new Date(new Date().toLocaleString('en-US', { timeZone: 'CET' }));
-    const hoyCET = ahoraCET.toLocaleDateString();
-    if (ultimaFechaReinicio === hoyCET && guardadas.length > 0) {
+    const ahoraLocal = new Date(new Date().toLocaleString('en-US', { timeZone: zonaHorariaLocal }));
+    const hoyLocal = ahoraLocal.toLocaleDateString();
+    if (ultimaFechaReinicio === hoyLocal && guardadas.length > 0) {
       const necesitaReinicio = guardadas.some(c => c.ultimoIngreso !== null);
       if (necesitaReinicio) {
         guardadas = guardadas.map(c => ({ ...c, ultimoIngreso: null }));
@@ -117,7 +123,7 @@ function App() {
     }
     setCuentas(Array.isArray(guardadas) ? guardadas : []);
     setHoraReinicio(localStorage.getItem(`horaReinicio-${usuarioActual}`) || '22:00');
-  }, [usuarioActual, usuarioLogueado]);
+  }, [usuarioActual, usuarioLogueado, zonaHorariaLocal]);
 
   // Efecto: Guardar cuentas y actualizar historial
   useEffect(() => {
@@ -135,49 +141,49 @@ function App() {
   }, [horaReinicio, usuarioActual]);
 
   
-  // Efecto: Reinicio automático a la hora CET
+  // Efecto: Reinicio automático a la hora local
   useEffect(() => {
     if (!usuarioActual) return;
     const ahora = new Date();
-    const ahoraCET = new Date(ahora.toLocaleString('en-US', { timeZone: 'CET' }));
-    const hoyCET = ahoraCET.toLocaleDateString();
+    const ahoraLocal = new Date(ahora.toLocaleString('en-US', { timeZone: zonaHorariaLocal }));
+    const hoyLocal = ahoraLocal.toLocaleDateString();
     const ultimaFechaReinicio = localStorage.getItem(`ultimaFechaReinicio-${usuarioActual}`) || '';
     const [hora, minuto] = horaReinicio.split(':').map(Number);
-    const reinicioHoyCET = new Date(ahoraCET);
-    reinicioHoyCET.setHours(hora, minuto, 0, 0);
-    if (ahoraCET >= reinicioHoyCET) {
-      if (ultimaFechaReinicio !== hoyCET) {
+    const reinicioHoyLocal = new Date(ahoraLocal);
+    reinicioHoyLocal.setHours(hora, minuto, 0, 0);
+    if (ahoraLocal >= reinicioHoyLocal) {
+      if (ultimaFechaReinicio !== hoyLocal) {
         setCuentas(prev => {
           const reiniciadas = prev.map(c => ({ ...c, ultimoIngreso: null }));
           localStorage.setItem(`cuentas-${usuarioActual}`, JSON.stringify(reiniciadas));
           return reiniciadas;
         });
-        localStorage.setItem(`ultimaFechaReinicio-${usuarioActual}`, hoyCET);
+        localStorage.setItem(`ultimaFechaReinicio-${usuarioActual}`, hoyLocal);
       }
     } else {
-      if (ultimaFechaReinicio !== hoyCET) {
+      if (ultimaFechaReinicio !== hoyLocal) {
         localStorage.setItem(`ultimaFechaReinicio-${usuarioActual}`, '');
       }
     }
     const timer = setInterval(() => {
       const ahora = new Date();
-      const ahoraCET = new Date(ahora.toLocaleString('en-US', { timeZone: 'CET' }));
-      const hoyCET = ahoraCET.toLocaleDateString();
+      const ahoraLocal = new Date(ahora.toLocaleString('en-US', { timeZone: zonaHorariaLocal }));
+      const hoyLocal = ahoraLocal.toLocaleDateString();
       const [hora, minuto] = horaReinicio.split(':').map(Number);
-      const reinicioHoyCET = new Date(ahoraCET);
-      reinicioHoyCET.setHours(hora, minuto, 0, 0);
+      const reinicioHoyLocal = new Date(ahoraLocal);
+      reinicioHoyLocal.setHours(hora, minuto, 0, 0);
       const ultimaFechaReinicio = localStorage.getItem(`ultimaFechaReinicio-${usuarioActual}`) || '';
-      if (ahoraCET >= reinicioHoyCET && ultimaFechaReinicio !== hoyCET) {
+      if (ahoraLocal >= reinicioHoyLocal && ultimaFechaReinicio !== hoyLocal) {
         setCuentas(prev => {
           const reiniciadas = prev.map(c => ({ ...c, ultimoIngreso: null }));
           localStorage.setItem(`cuentas-${usuarioActual}`, JSON.stringify(reiniciadas));
           return reiniciadas;
         });
-        localStorage.setItem(`ultimaFechaReinicio-${usuarioActual}`, hoyCET);
+        localStorage.setItem(`ultimaFechaReinicio-${usuarioActual}`, hoyLocal);
       }
     }, 60000);
     return () => clearInterval(timer);
-  }, [horaReinicio, usuarioActual]);
+  }, [horaReinicio, usuarioActual, zonaHorariaLocal]);
 
   const handleLogin = (usuario) => {
     setUsuarioLogueado(usuario);
@@ -224,6 +230,18 @@ function App() {
     return { horas, minutos };
   };
 
+  // Eliminar todas las cuentas asociadas a un correo
+  const eliminarCuentasPorCorreo = (correo) => {
+    setModalConfirm({
+      isOpen: true,
+      message: `¿Seguro que deseas eliminar todas las cuentas asociadas al correo "${correo}"?`,
+      onConfirm: () => {
+        setCuentas(prev => prev.filter(c => c.correo !== correo));
+        setModalConfirm({ isOpen: false, message: '', onConfirm: null });
+      }
+    });
+  };
+
   // Handlers de cuentas y PJs
   const agregarCuenta = () => {
     // Las validaciones ahora se manejan en AccountForm
@@ -249,6 +267,7 @@ function App() {
     setCuentas([...cuentas, cuenta]);
     setFormVisible(false);
     setNuevaCuenta({ nombre: '', correo: '', cantidadPjs: '' });
+    setFiltro(''); // Limpiar filtro para mostrar todas las cuentas
     setSuccessNotification({
       isOpen: true,
       message: `✅ Cuenta "${nuevaCuenta.nombre}" creada exitosamente${cantidad > 0 ? ` con ${cantidad} PJ(s)` : ''}.`
@@ -349,7 +368,16 @@ function App() {
   };
 
   // Cálculos derivados
-  const cuentasFiltradas = cuentas.filter(c => c.nombre.toLowerCase().includes(filtro.toLowerCase()));
+  const cuentasFiltradas = cuentas.filter(c => {
+    const filtroLower = filtro.toLowerCase();
+    // Coincidencia por nombre de cuenta
+    if (c.nombre.toLowerCase().includes(filtroLower)) return true;
+    // Coincidencia por notas de algún PJ
+    if (c.pejotas && c.pejotas.some(pj => (pj.notas || '').toLowerCase().includes(filtroLower))) return true;
+    // Coincidencia por nombre de algún PJ
+    if (c.pejotas && c.pejotas.some(pj => (pj.nombre || '').toLowerCase().includes(filtroLower))) return true;
+    return false;
+  });
   const cuentasPorCorreo = cuentasFiltradas.reduce((acc, c) => {
     const key = c.correo || 'Sin correo';
     if (!acc[key]) acc[key] = [];
@@ -405,132 +433,134 @@ function App() {
             </div>
           )}
           {pestañaActiva === 'inicio' && (
-            <div className="space-y-6 fade-in">
-            {mostrarResumen && (
-              <div className="card">
-                <div className="card-body">
-                  <div className="stats-grid">
-                    <div className="stat-card stat-danger">
-                      <div className="stat-value">{formatNumber(faltantesHoy)}</div>
-                      <div className="stat-label">Cuentas por ingresar</div>
-                    </div>
-                    <div className="stat-card stat-primary">
-                      <div className="stat-value">{formatCompactNumber(totalPjs)}</div>
-                      <div className="stat-label">Total PJs</div>
-                    </div>
-                    <div className="stat-card stat-warning">
-                      <div className="stat-value">{formatCompactNumber(totalMedallas)}</div>
-                      <div className="stat-label">Total Medallas</div>
-                    </div>
-                    <div className="stat-card stat-success">
-                      <div className="stat-value">{tiempoRestante.horas}h {tiempoRestante.minutos}m</div>
-                      <div className="stat-label">Tiempo restante</div>
-                    </div>
-                  </div>
-                  <div className="border-t border-gray-200 pt-4 mt-4 flex items-center justify-between">
-                    <button
-                      onClick={() => setMostrarDetallesMedallas(true)}
-                      className="btn btn-secondary text-sm"
-                    >
-                      🏆 Ver Top Medallas
-                    </button>
-                    <div className="flex items-center gap-4">
-                      <TimeSettings horaReinicio={horaReinicio} setHoraReinicio={setHoraReinicio} />
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-            
-            <div className="card">
-              <div className="card-header">
-                <div className="flex justify-between items-center">
-                  <h2 className="text-xl font-bold text-gray-800">Gestión de Cuentas</h2>
-                  <div className="flex gap-3">
-                    <button
-                      onClick={() => setFormVisible(true)}
-                      className="btn btn-success flex items-center gap-2"
-                    >
-                      <FaUserPlus className="w-4 h-4" />
-                      Nueva Cuenta
-                    </button>
-                    <button
-                      onClick={() => setMostrarSoloCorreos(!mostrarSoloCorreos)}
-                      className={`btn ${mostrarSoloCorreos ? 'btn-primary' : 'btn-secondary'} flex items-center gap-2`}
-                    >
-                      {mostrarSoloCorreos ? '📧 Mostrar Cuentas' : '📧 Solo Correos'}
-                    </button>
-                  </div>
-                </div>
-              </div>
-              <div className="card-body">
-            {formVisible && (
-            <AccountForm
-              nuevaCuenta={nuevaCuenta}
-              setNuevaCuenta={setNuevaCuenta}
-              agregarCuenta={agregarCuenta}
-              cancelar={() => setFormVisible(false)}
-              cuentas={cuentas}
-            />
-            )}
-            {mostrarAgregarPJ && (
-              <div className="modal-overlay">
-                <div className="modal-content max-w-md">
-                  <div className="card-header">
-                    <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
-                      <FaUserPlus className="text-green-600" />
-                      Agregar PJ
-                    </h2>
-                  </div>
-                  <div className="card-body">
-                    <div className="relative">
-                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                        <FaUser className="text-gray-400" />
-                      </div>
-                      <input
-                        className="form-input with-icon"
-                        placeholder="Nombre del PJ"
-                        value={nuevoPj}
-                        onChange={e => setNuevoPj(e.target.value)}
-                        onKeyPress={e => e.key === 'Enter' && agregarPJACuenta()}
-                        autoFocus
-                      />
-                    </div>
-                  </div>
-                  <div className="card-footer flex justify-end gap-3">
-                    <button
-                      onClick={() => setMostrarAgregarPJ(false)}
-                      className="btn btn-secondary"
-                    >
-                      Cancelar
-                    </button>
-                    <button
-                      onClick={agregarPJACuenta}
-                      className="btn btn-success flex items-center gap-2"
-                    >
-                      <FaUserPlus className="w-4 h-4" />
-                      Agregar PJ
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
-            <AccountList
-                  cuentasPorCorreo={cuentasPorCorreo}
-                  hoy={hoy}
-                  mostrarDetalles={mostrarDetalles}
-                  setMostrarDetalles={setMostrarDetalles}
-                  alternarIngreso={alternarIngreso}
-                  setCuentaActiva={setCuentaActiva}
-                  setMostrarAgregarPJ={setMostrarAgregarPJ}
-                  eliminarCuenta={eliminarCuenta}
-                  eliminarPj={eliminarPj}
-                  editarPj={editarPj}
-                  mostrarSoloCorreos={mostrarSoloCorreos}
-                />
-              </div>
-            </div>
-            </div>
+          <div className="space-y-6 fade-in">
+          {mostrarResumen && (
+          <ResumenStats
+          faltantesHoy={faltantesHoy}
+          totalPjs={totalPjs}
+          totalMedallas={totalMedallas}
+          tiempoRestante={tiempoRestante}
+          setMostrarDetallesMedallas={setMostrarDetallesMedallas}
+          horaReinicio={horaReinicio}
+          setHoraReinicio={setHoraReinicio}
+          usuarioActual={usuarioActual}
+          cuentas={cuentas}
+          />
+          )}
+          
+          <div className="card">
+          <div className="card-header">
+          <div className="flex justify-between items-center">
+          <h2 className="text-xl font-bold text-gray-800">Gestión de Cuentas</h2>
+          <div className="flex gap-3">
+          <button
+          onClick={() => setFormVisible(true)}
+          className="btn btn-success flex items-center gap-2"
+          >
+          <FaUserPlus className="w-4 h-4" />
+          Nueva Cuenta
+          </button>
+          <button
+          onClick={() => setMostrarSoloCorreos(!mostrarSoloCorreos)}
+          className={`btn ${mostrarSoloCorreos ? 'btn-primary' : 'btn-secondary'} flex items-center gap-2`}
+          >
+          {mostrarSoloCorreos ? '📧 Mostrar Cuentas' : '📧 Solo Correos'}
+          </button>
+          <button
+          onClick={() => {
+          setModalConfirm({
+          isOpen: true,
+          message: '¿Seguro que deseas poner en 0 todas las medallas de todos los PJs?',
+          onConfirm: () => {
+          setCuentas(prev => prev.map(c => ({
+          ...c,
+          pejotas: c.pejotas.map(pj => ({ ...pj, medallas: 0 }))
+          })));
+          setModalConfirm({ isOpen: false, message: '', onConfirm: null });
+          }
+          });
+          }}
+          className="btn btn-warning flex items-center gap-2"
+          >
+          🧹 Limpiar Medallas
+          </button>
+          </div>
+          </div>
+          </div>
+          <div className="card-body">
+          {formVisible && (
+          <AccountForm
+          nuevaCuenta={nuevaCuenta}
+          setNuevaCuenta={setNuevaCuenta}
+          agregarCuenta={agregarCuenta}
+          cancelar={() => setFormVisible(false)}
+          cuentas={cuentas}
+          />
+          )}
+          {mostrarAgregarPJ && (
+          <div className="modal-overlay">
+          <div className="modal-content max-w-md">
+          <div className="card-header">
+          <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
+          <FaUserPlus className="text-green-600" />
+          Agregar PJ
+          </h2>
+          </div>
+          <div className="card-body">
+          <div className="relative">
+          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+          <FaUser className="text-gray-400" />
+          </div>
+          <input
+          className="form-input with-icon"
+          placeholder="Nombre del PJ"
+          value={nuevoPj}
+          onChange={e => setNuevoPj(e.target.value)}
+          onKeyPress={e => e.key === 'Enter' && agregarPJACuenta()}
+          autoFocus
+          />
+          </div>
+          </div>
+          <div className="card-footer flex justify-end gap-3">
+          <button
+          onClick={() => setMostrarAgregarPJ(false)}
+          className="btn btn-secondary"
+          >
+          Cancelar
+          </button>
+          <button
+          onClick={agregarPJACuenta}
+          className="btn btn-success flex items-center gap-2"
+          >
+          <FaUserPlus className="w-4 h-4" />
+          Agregar PJ
+          </button>
+          </div>
+          </div>
+          </div>
+          )}
+          <AccountList
+          cuentasPorCorreo={cuentasPorCorreo}
+          hoy={hoy}
+          mostrarDetalles={mostrarDetalles}
+          setMostrarDetalles={setMostrarDetalles}
+          alternarIngreso={alternarIngreso}
+          setCuentaActiva={setCuentaActiva}
+          setMostrarAgregarPJ={setMostrarAgregarPJ}
+          eliminarCuenta={eliminarCuenta}
+          eliminarPj={eliminarPj}
+          editarPj={editarPj}
+          mostrarSoloCorreos={mostrarSoloCorreos}
+          eliminarCuentasPorCorreo={eliminarCuentasPorCorreo}
+          />
+          </div>
+          </div>
+          </div>
+          )}
+          {pestañaActiva === 'info' && (
+          <div className="fade-in">
+          <AboutPage />
+          </div>
           )}
         </div>
       </main>
@@ -547,10 +577,18 @@ function App() {
         onClose={() => setSuccessNotification({ isOpen: false, message: '' })}
       />
       {mostrarDetallesMedallas && (
-        <MedalDetails 
-          cuentas={cuentas}
-          onClose={() => setMostrarDetallesMedallas(false)}
-        />
+        <div className="fixed inset-0 z-40 flex items-center justify-center bg-black bg-opacity-40">
+          <div className="flex flex-col lg:flex-row gap-6 items-start justify-center max-w-7xl w-full mx-4">
+            <MedalDetails 
+              cuentas={cuentas}
+              onClose={() => setMostrarDetallesMedallas(false)}
+            />
+            <WeekCalendar 
+              historial={JSON.parse(localStorage.getItem(`historial-diario-${usuarioActual}`) || '{}')}
+              totalCuentas={cuentas.length}
+            />
+          </div>
+        </div>
       )}
       {mostrarSuperUser && (
         <SuperUserManager 
@@ -568,6 +606,103 @@ function App() {
           setMostrarAgregarPJ={setMostrarAgregarPJ}
         />
       )}
+    </div>
+  );
+}
+
+// Componente para mostrar las stats con toggle abreviado/completo
+function ResumenStats({ faltantesHoy, totalPjs, totalMedallas, tiempoRestante, setMostrarDetallesMedallas, horaReinicio, setHoraReinicio, usuarioActual, cuentas }) {
+  const [showFull, setShowFull] = React.useState({ pjs: false, medallas: false });
+  const [showCongrats, setShowCongrats] = React.useState(false);
+  const prevFaltantes = React.useRef(faltantesHoy);
+  React.useEffect(() => {
+    if (prevFaltantes.current > 0 && faltantesHoy === 0) {
+      setShowCongrats(true);
+      setTimeout(() => setShowCongrats(false), 3000);
+    }
+    prevFaltantes.current = faltantesHoy;
+  }, [faltantesHoy]);
+  return (
+    <div className="card">
+      <div className="card-body">
+        {/* Mensaje de alerta flotante tipo toast */}
+        {showCongrats && (
+          <div style={{
+            position: 'fixed',
+            top: '32px',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            zIndex: 9999,
+            minWidth: '320px',
+            background: 'linear-gradient(90deg, #fbbf24 0%, #22c55e 100%)',
+            color: '#fff',
+            fontWeight: 600,
+            fontSize: '1.2rem',
+            borderRadius: '16px',
+            boxShadow: '0 8px 32px rgba(0,0,0,0.18)',
+            padding: '1.2rem 2.5rem',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '1rem',
+            textAlign: 'center',
+            animation: 'fadeIn 0.5s',
+          }}>
+            <span className="fire-effect" role="img" aria-label="fuego" style={{fontSize:'2rem'}}>🔥</span>
+            <span style={{display:'inline-block', minWidth:'180px'}}>¡Felicidades! Has completado los ingresos de hoy</span>
+            <span className="fire-effect" role="img" aria-label="fuego" style={{fontSize:'2rem'}}>🔥</span>
+          </div>
+        )}
+        {/* Mensaje especial si todas las cuentas han sido ingresadas */}
+        {!showCongrats && faltantesHoy === 0 && (
+          <div className="alert alert-success flex items-center gap-2 mb-4 fade-in justify-center text-center mx-auto" style={{fontSize:'1.1rem', maxWidth:'420px'}}>
+            <span className="fire-effect" role="img" aria-label="fuego">🔥</span>
+            <span style={{display:'inline-block', minWidth:'140px'}}>¡Has ingresado a todas las cuentas hoy!</span>
+            <span className="fire-effect" role="img" aria-label="fuego">🔥</span>
+          </div>
+        )}
+        <div className="stats-grid">
+          <div className={`stat-card stat-danger${faltantesHoy > 0 ? ' alert-aura' : ''}`}>
+            <div className="stat-value">{formatNumber(faltantesHoy)}</div>
+            <div className="stat-label">Cuentas por ingresar</div>
+          </div>
+          <div className="stat-card stat-primary cursor-pointer" onClick={() => setShowFull(s => ({ ...s, pjs: !s.pjs }))} title="Click para alternar formato">
+            <div className="stat-value">
+              {showFull.pjs ? formatNumber(totalPjs) : formatCompactNumber(totalPjs)}
+            </div>
+            <div className="stat-label">Total PJs</div>
+          </div>
+          <div className="stat-card stat-warning cursor-pointer" onClick={() => setShowFull(s => ({ ...s, medallas: !s.medallas }))} title="Click para alternar formato">
+            <div className="stat-value">
+              {showFull.medallas ? formatNumber(totalMedallas) : formatCompactNumber(totalMedallas)}
+            </div>
+            <div className="stat-label">Total Medallas</div>
+          </div>
+          <div className="stat-card stat-success">
+            <div className="stat-value">{tiempoRestante.horas}h {tiempoRestante.minutos}m</div>
+            <div className="stat-label">Tiempo restante</div>
+          </div>
+        </div>
+        <div className="border-t border-gray-200 pt-4 mt-4 flex flex-col md:flex-row items-center justify-between gap-4">
+          <div className="flex-1 flex justify-start">
+            <button
+              onClick={() => setMostrarDetallesMedallas(true)}
+              className="btn btn-secondary text-sm"
+            >
+              🏆 Ver Top Medallas
+            </button>
+          </div>
+          <div className="flex-1 flex justify-center">
+            <WeekCalendarCompact
+              historial={JSON.parse(localStorage.getItem(`historial-diario-${usuarioActual}`) || '{}')}
+              totalCuentas={cuentas.length}
+            />
+          </div>
+          <div className="flex-1 flex justify-end">
+            <TimeSettings horaReinicio={horaReinicio} setHoraReinicio={setHoraReinicio} />
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

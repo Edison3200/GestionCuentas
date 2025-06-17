@@ -1,5 +1,5 @@
 import React from 'react';
-import { FaSearch, FaHistory, FaDatabase, FaUser, FaHome, FaShieldAlt } from 'react-icons/fa';
+import { FaSearch, FaHistory, FaDatabase, FaUser, FaHome, FaShieldAlt, FaInfoCircle } from 'react-icons/fa';
 
 function Header({ 
   filtro, 
@@ -14,7 +14,8 @@ function Header({
     { id: 'inicio', nombre: 'Inicio', icono: <FaHome /> },
     { id: 'historial', nombre: 'Historial', icono: <FaHistory /> },
     { id: 'datos', nombre: 'Gestión de Datos', icono: <FaDatabase /> },
-    { id: 'usuarios', nombre: 'Usuarios', icono: <FaUser /> }
+    { id: 'usuarios', nombre: 'Usuarios', icono: <FaUser /> },
+    { id: 'info', nombre: 'Información', icono: <FaInfoCircle /> }
   ];
 
   return (
@@ -60,7 +61,8 @@ function Header({
               value={filtro}
               onChange={(e) => setFiltro(e.target.value)}
               placeholder="Buscar cuenta..."
-              className="form-input w-full pl-10 rounded-lg border-gray-300 focus:border-blue-500 focus:ring focus:ring-blue-200"
+              className="form-input w-full pl-12 rounded-lg border-gray-300 focus:border-blue-500 focus:ring focus:ring-blue-200"
+              style={{ paddingLeft: '3rem' }}
             />
           </div>
         </div>
