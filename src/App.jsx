@@ -42,6 +42,23 @@ function App() {
   const [pestañaActiva, setPestañaActiva] = useState('inicio');
   const [usuarioLogueado, setUsuarioLogueado] = useState(null);
   const [mostrarSuperUser, setMostrarSuperUser] = useState(false);
+  const [busquedaPendiente, setBusquedaPendiente] = useState('');
+  const [historial, setHistorial] = useState(() => {
+    if (!usuarioActual) return {};
+    try {
+      return JSON.parse(localStorage.getItem(`historial-diario-${usuarioActual}`)) || {};
+    } catch {
+      return {};
+    }
+  });
+
+  // Mapeo de nombre a emoji simple (hombre, mujer, gato, perro)
+  const iconMap = {
+    man: '👨',
+    woman: '👩',
+    cat: '🐱',
+    dog: '🐶',
+  };
 
   // Función auxiliar
   const hoy = new Date().toLocaleDateString();
@@ -73,7 +90,11 @@ function App() {
   useEffect(() => {
     const sesionActiva = localStorage.getItem('sesion-activa');
     if (sesionActiva) {
-      const usuario = JSON.parse(sesionActiva);
+      let usuario = JSON.parse(sesionActiva);
+      // Si el icono es un nombre, mostrar el emoji
+      if (usuario.icono && typeof usuario.icono === 'string') {
+        usuario = { ...usuario, icono: iconMap[usuario.icono] || usuario.icono };
+      }
       setUsuarioLogueado(usuario);
       setUsuarioActual(usuario.usuario);
     }
@@ -186,9 +207,16 @@ function App() {
   }, [horaReinicio, usuarioActual, zonaHorariaLocal]);
 
   const handleLogin = (usuario) => {
-    setUsuarioLogueado(usuario);
-    setUsuarioActual(usuario.usuario);
-    localStorage.setItem('sesion-activa', JSON.stringify(usuario));
+    let user = { ...usuario };
+    // Si el icono es un nombre, buscar el emoji
+    if (user.icono && typeof user.icono === 'string') {
+      user.icono = iconMap[user.icono] || user.icono;
+    }
+    setUsuarioLogueado(user);
+    setUsuarioActual(user.usuario);
+    // Guardar solo el string del nombre del icono (no el emoji) en localStorage
+    const usuarioParaGuardar = { ...usuario, icono: Object.keys(iconMap).find(key => iconMap[key] === user.icono) || user.icono };
+    localStorage.setItem('sesion-activa', JSON.stringify(usuarioParaGuardar));
   };
 
   const handleLogout = () => {
@@ -230,6 +258,17 @@ function App() {
     return { horas, minutos };
   };
 
+  // Estado reactivo para el tiempo restante
+  const [tiempoRestante, setTiempoRestante] = useState(calcularTiempoHastaReinicio());
+
+  // Actualizar el tiempo restante cada segundo
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setTiempoRestante(calcularTiempoHastaReinicio());
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [horaReinicio]);
+
   // Eliminar todas las cuentas asociadas a un correo
   const eliminarCuentasPorCorreo = (correo) => {
     setModalConfirm({
@@ -251,7 +290,8 @@ function App() {
     const pejotas = Array.from({ length: cantidad }, (_, i) => ({
       nombre: `PJ${i + 1}`,
       medallas: 0,
-      notas: ''
+      notas: '',
+      wones: ''
     }));
     
     const cuenta = {
@@ -286,7 +326,7 @@ function App() {
     setCuentas(prev =>
       prev.map(c =>
         c.id === cuentaActiva
-          ? { ...c, pejotas: [...c.pejotas, { nombre: nuevoPj.trim(), medallas: 0, notas: '' }] }
+          ? { ...c, pejotas: [...c.pejotas, { nombre: nuevoPj.trim(), medallas: 0, notas: '', wones: '' }] }
           : c
       )
     );
@@ -323,7 +363,13 @@ function App() {
       prev.map(c => {
         if (c.id === cuentaId) {
           const nuevosPjs = [...c.pejotas];
-          nuevosPjs[index][campo] = campo === 'medallas' ? parseInt(valor || 0) : valor;
+          if (campo === 'medallas') {
+            nuevosPjs[index][campo] = parseInt(valor || 0);
+          } else if (campo === 'wones') {
+            nuevosPjs[index][campo] = valor.replace(/\D/g, ''); // solo números
+          } else {
+            nuevosPjs[index][campo] = valor;
+          }
           return { ...c, pejotas: nuevosPjs };
         }
         return c;
@@ -367,6 +413,68 @@ function App() {
     });
   };
 
+  // --- BÚSQUEDA DE PJ Y MODAL DIRECTO ---
+  const [modalBusquedaPJ, setModalBusquedaPJ] = useState(null); // {cuenta, pj}
+  const [mensajeBusquedaPJ, setMensajeBusquedaPJ] = useState('');
+
+  // Cambiar el input del buscador para usar busquedaPendiente
+  // En el Header:
+  // <Header filtro={busquedaPendiente} setFiltro={setBusquedaPendiente} ... />
+
+  // Solo buscar cuando el usuario presione Enter
+  React.useEffect(() => {
+    setFiltro(''); // Limpiar filtro reactivo
+  }, []);
+
+  React.useEffect(() => {
+    // Cuando cambia filtro, limpiar modal de búsqueda
+    setModalBusquedaPJ(null);
+    setMensajeBusquedaPJ('');
+  }, [filtro]);
+
+  // Buscar por nombre de cuenta, nombre de PJ o notas
+  const buscarPj = React.useCallback(() => {
+    if (busquedaPendiente.trim().length === 0) {
+      setModalBusquedaPJ(null);
+      setMensajeBusquedaPJ('');
+      return;
+    }
+    const coincidencias = [];
+    cuentas.forEach(cuenta => {
+      // Buscar por nombre de cuenta
+      if (cuenta.nombre.toLowerCase().includes(busquedaPendiente.toLowerCase())) {
+        coincidencias.push({ cuenta, pj: null, idx: null, tipo: 'cuenta' });
+      }
+      // Buscar por nombre o notas de PJ
+      cuenta.pejotas.forEach((pj, idx) => {
+        if (
+          pj.nombre.toLowerCase().includes(busquedaPendiente.toLowerCase()) ||
+          (pj.notas && pj.notas.toLowerCase().includes(busquedaPendiente.toLowerCase()))
+        ) {
+          coincidencias.push({ cuenta, pj, idx, tipo: 'pj' });
+        }
+      });
+    });
+    if (coincidencias.length === 1) {
+      setModalBusquedaPJ(coincidencias[0]);
+      setMensajeBusquedaPJ('');
+    } else if (coincidencias.length > 1) {
+      setModalBusquedaPJ(null);
+      setMensajeBusquedaPJ(`Hay ${coincidencias.length} coincidencias para "${busquedaPendiente}". Especifica más.`);
+    } else {
+      setModalBusquedaPJ(null);
+      setMensajeBusquedaPJ(`No se encontró ningún PJ, cuenta o nota que coincida con "${busquedaPendiente}".`);
+    }
+  }, [busquedaPendiente, cuentas]);
+
+  // Ocultar mensaje de búsqueda después de 2.5 segundos
+  useEffect(() => {
+    if (mensajeBusquedaPJ) {
+      const timer = setTimeout(() => setMensajeBusquedaPJ(''), 2500);
+      return () => clearTimeout(timer);
+    }
+  }, [mensajeBusquedaPJ]);
+
   // Cálculos derivados
   const cuentasFiltradas = cuentas.filter(c => {
     const filtroLower = filtro.toLowerCase();
@@ -390,7 +498,6 @@ function App() {
     (a, c) => a + c.pejotas.reduce((m, pj) => m + (pj.medallas || 0), 0),
     0
   );
-  const tiempoRestante = calcularTiempoHastaReinicio();
 
   if (!usuarioLogueado) {
     return <LoginForm onLogin={handleLogin} />;
@@ -399,13 +506,14 @@ function App() {
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
       <Header 
-        filtro={filtro} 
-        setFiltro={setFiltro}
+        filtro={busquedaPendiente} 
+        setFiltro={setBusquedaPendiente}
         pestañaActiva={pestañaActiva}
         setPestañaActiva={setPestañaActiva}
         usuarioLogueado={usuarioLogueado}
         onLogout={handleLogout}
         onOpenSuperUser={() => setMostrarSuperUser(true)}
+        onBuscarPj={buscarPj}
       />
       <main className="flex-grow">
         <div className="max-w-7xl mx-auto px-4 py-8">
@@ -455,48 +563,45 @@ function App() {
                 <h2 className="text-xl font-bold text-gray-800">Gestión de Cuentas</h2>
               </div>
               <div className="flex-1 flex justify-center">
-                {faltantesHoy === 0 && (
-                  <div className="alert alert-success flex items-center gap-2 fade-in text-center" style={{fontSize:'1.1rem', maxWidth:'320px', marginBottom: 0, padding: '0.25rem 1rem', height: 'auto'}}>
-                    <span className="fire-effect" role="img" aria-label="fuego">🔥</span>
-                    <span style={{display:'inline-block', minWidth:'120px'}}>¡Has ingresado a todas las cuentas hoy!</span>
-                    <span className="fire-effect" role="img" aria-label="fuego">🔥</span>
-                  </div>
-                )}
+                <WeekCalendarCompact
+                  historial={JSON.parse(localStorage.getItem(`historial-diario-${usuarioActual}`) || '{}')}
+                  totalCuentas={cuentas.length}
+                />
               </div>
-              <div className="flex gap-3 flex-none">
-          <button
-          onClick={() => setFormVisible(true)}
-          className="btn btn-success flex items-center gap-2"
-          >
-          <FaUserPlus className="w-4 h-4" />
-          Nueva Cuenta
-          </button>
-          <button
-          onClick={() => setMostrarSoloCorreos(!mostrarSoloCorreos)}
-          className={`btn ${mostrarSoloCorreos ? 'btn-primary' : 'btn-secondary'} flex items-center gap-2`}
-          >
-          {mostrarSoloCorreos ? '📧 Mostrar Cuentas' : '📧 Solo Correos'}
-          </button>
-          <button
-          onClick={() => {
-          setModalConfirm({
-          isOpen: true,
-          message: '¿Seguro que deseas poner en 0 todas las medallas de todos los PJs?',
-          onConfirm: () => {
-          setCuentas(prev => prev.map(c => ({
-          ...c,
-          pejotas: c.pejotas.map(pj => ({ ...pj, medallas: 0 }))
-          })));
-          setModalConfirm({ isOpen: false, message: '', onConfirm: null });
-          }
-          });
-          }}
-          className="btn btn-warning flex items-center gap-2"
-          >
-          🧹 Limpiar Medallas
-          </button>
-          </div>
-          </div>
+              <div className="flex gap-3 flex-none overflow-x-auto pb-2 mobile-btn-row">
+                <button
+                  onClick={() => setFormVisible(true)}
+                  className="btn btn-success flex items-center gap-2"
+                >
+                  <FaUserPlus className="w-4 h-4" />
+                  Nueva Cuenta
+                </button>
+                <button
+                  onClick={() => setMostrarSoloCorreos(!mostrarSoloCorreos)}
+                  className={`btn ${mostrarSoloCorreos ? 'btn-primary' : 'btn-secondary'} flex items-center gap-2`}
+                >
+                  {mostrarSoloCorreos ? '📧 Mostrar Cuentas' : '📧 Solo Correos'}
+                </button>
+                <button
+                  onClick={() => {
+                    setModalConfirm({
+                      isOpen: true,
+                      message: '¿Seguro que deseas poner en 0 todas las medallas de todos los PJs?',
+                      onConfirm: () => {
+                        setCuentas(prev => prev.map(c => ({
+                          ...c,
+                          pejotas: c.pejotas.map(pj => ({ ...pj, medallas: 0 }))
+                        })));
+                        setModalConfirm({ isOpen: false, message: '', onConfirm: null });
+                      }
+                    });
+                  }}
+                  className="btn btn-warning flex items-center gap-2"
+                >
+                  🧹 Limpiar Medallas
+                </button>
+              </div>
+            </div>
           </div>
           <div className="card-body">
           {formVisible && (
@@ -617,6 +722,22 @@ function App() {
           setMostrarAgregarPJ={setMostrarAgregarPJ}
         />
       )}
+      {modalBusquedaPJ && (
+        <PjDetailsModal
+          cuenta={modalBusquedaPJ.cuenta}
+          onClose={() => setModalBusquedaPJ(null)}
+          editarPj={editarPj}
+          eliminarPj={eliminarPj}
+          setCuentaActiva={setCuentaActiva}
+          setMostrarAgregarPJ={setMostrarAgregarPJ}
+          pjIndex={modalBusquedaPJ.idx}
+        />
+      )}
+      {mensajeBusquedaPJ && (
+        <div className="fixed top-24 left-1/2 transform -translate-x-1/2 z-50 bg-yellow-100 border border-yellow-400 text-yellow-800 px-6 py-3 rounded shadow-lg animate-fadeIn">
+          {mensajeBusquedaPJ}
+        </div>
+      )}
     </div>
   );
 }
@@ -625,6 +746,23 @@ function App() {
 function ResumenStats({ faltantesHoy, totalPjs, totalMedallas, tiempoRestante, setMostrarDetallesMedallas, horaReinicio, setHoraReinicio, usuarioActual, cuentas }) {
   const [showFull, setShowFull] = React.useState({ pjs: false, medallas: false });
   const [showCongrats, setShowCongrats] = React.useState(false);
+  const [editandoHora, setEditandoHora] = React.useState(false);
+  const [anchorReinicio, setAnchorReinicio] = React.useState(null);
+
+  // Cerrar el editor de hora al hacer clic fuera
+  React.useEffect(() => {
+    if (!editandoHora) return;
+    function handleClick(e) {
+      const pop = document.querySelector('.time-settings-pop');
+      if (pop && !pop.contains(e.target) && !anchorReinicio?.contains?.(e.target)) {
+        setEditandoHora(false);
+        setAnchorReinicio(null);
+      }
+    }
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [editandoHora, anchorReinicio]);
+
   const prevFaltantes = React.useRef(faltantesHoy);
   React.useEffect(() => {
     if (prevFaltantes.current > 0 && faltantesHoy === 0) {
@@ -665,45 +803,55 @@ function ResumenStats({ faltantesHoy, totalPjs, totalMedallas, tiempoRestante, s
           </div>
         )}
         {/* Mensaje especial si todas las cuentas han sido ingresadas */}
-        <div className="stats-grid">
-          <div className={`stat-card stat-danger${faltantesHoy > 0 ? ' alert-aura' : ''}`}>
+        <div className="stats-grid gap-2 md:gap-4">
+          <div className={`stat-card stat-danger${faltantesHoy > 0 ? ' alert-aura' : ''}`}
+            style={{margin: 0}}>
             <div className="stat-value">{formatNumber(faltantesHoy)}</div>
             <div className="stat-label">Cuentas por ingresar</div>
           </div>
-          <div className="stat-card stat-primary cursor-pointer" onClick={() => setShowFull(s => ({ ...s, pjs: !s.pjs }))} title="Click para alternar formato">
+          <div className="stat-card stat-primary cursor-pointer" onClick={() => setShowFull(s => ({ ...s, pjs: !s.pjs }))} title="Click para alternar formato"
+            style={{margin: 0}}>
             <div className="stat-value">
               {showFull.pjs ? formatNumber(totalPjs) : formatCompactNumber(totalPjs)}
             </div>
             <div className="stat-label">Total PJs</div>
           </div>
-          <div className="stat-card stat-warning cursor-pointer" onClick={() => setShowFull(s => ({ ...s, medallas: !s.medallas }))} title="Click para alternar formato">
-            <div className="stat-value">
+          <div className="stat-card stat-warning flex flex-col items-center justify-center relative"
+            style={{margin: 0}}>
+            <button
+              className="btn btn-secondary btn-xs absolute right-2 top-2 z-10"
+              style={{fontSize:'0.85em', padding:'0.2em 0.7em'}}
+              onClick={() => setMostrarDetallesMedallas(true)}
+              title="Ver Top Medallas"
+            >
+              🏆 Top
+            </button>
+            <div className="stat-value flex items-center gap-2">
               {showFull.medallas ? formatNumber(totalMedallas) : formatCompactNumber(totalMedallas)}
             </div>
             <div className="stat-label">Total Medallas</div>
           </div>
-          <div className="stat-card stat-success">
-            <div className="stat-value">{tiempoRestante.horas}h {tiempoRestante.minutos}m</div>
-            <div className="stat-label">Tiempo restante</div>
-          </div>
-        </div>
-        <div className="border-t border-gray-200 pt-4 mt-4 flex flex-col md:flex-row items-center justify-between gap-4">
-          <div className="flex-1 flex justify-start">
+          <div className="stat-card stat-success flex flex-col items-center justify-center relative"
+            style={{margin: 0}}>
             <button
-              onClick={() => setMostrarDetallesMedallas(true)}
-              className="btn btn-secondary text-sm"
+              ref={el => setAnchorReinicio(el)}
+              className="btn btn-secondary btn-xs absolute right-2 top-2 z-10"
+              style={{fontSize:'0.85em', padding:'0.2em 0.7em'}}
+              onClick={() => setEditandoHora(e => !e)}
             >
-              🏆 Ver Top Medallas
+              Reinicio
             </button>
-          </div>
-          <div className="flex-1 flex justify-center">
-            <WeekCalendarCompact
-              historial={JSON.parse(localStorage.getItem(`historial-diario-${usuarioActual}`) || '{}')}
-              totalCuentas={cuentas.length}
-            />
-          </div>
-          <div className="flex-1 flex justify-end">
-            <TimeSettings horaReinicio={horaReinicio} setHoraReinicio={setHoraReinicio} />
+            <div className="stat-value">
+              {tiempoRestante.horas}h {tiempoRestante.minutos}m
+            </div>
+            <div className="stat-label flex items-center gap-2">
+              Tiempo restante Misión Diaria
+            </div>
+            {editandoHora && (
+              <span className="time-settings-pop absolute right-2 top-10 z-20">
+                <TimeSettings horaReinicio={horaReinicio} setHoraReinicio={setHoraReinicio} />
+              </span>
+            )}
           </div>
         </div>
       </div>

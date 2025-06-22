@@ -26,6 +26,11 @@ function AccountList({
 }) {
   return (
     <>
+      {Object.keys(cuentasPorCorreo).length === 0 && (
+        <div className="text-center text-gray-500 py-8 text-lg">
+          No se encontraron resultados para tu búsqueda.
+        </div>
+      )}
       {Object.entries(cuentasPorCorreo).map(([correo, grupo], idx) => (
         <div
           key={correo}
