@@ -504,7 +504,7 @@ function App() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
+    <div className="App">
       <Header 
         filtro={busquedaPendiente} 
         setFiltro={setBusquedaPendiente}
@@ -515,7 +515,8 @@ function App() {
         onOpenSuperUser={() => setMostrarSuperUser(true)}
         onBuscarPj={buscarPj}
       />
-      <main className="flex-grow">
+      <main className="container mx-auto p-4">
+        <h1 className="text-3xl font-bold text-center mb-6 text-blue-700">¡Página actualizada correctamente! 🚀</h1>
         <div className="max-w-7xl mx-auto px-4 py-8">
           {pestañaActiva === 'usuarios' && (
             <UserManager 
