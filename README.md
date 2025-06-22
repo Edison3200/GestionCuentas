@@ -4,3 +4,4 @@
 "# Forzar deploy con cambio visible en App.jsx" 
 "# Quitar mensaje de p gina actualizada" 
 "# Activar deploy en master" 
+"# Forzar recreaci¢n de gh-pages" 
