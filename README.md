@@ -5,3 +5,4 @@
 "# Quitar mensaje de p gina actualizada" 
 "# Activar deploy en master" 
 "# Forzar recreaci¢n de gh-pages" 
+"# Eliminar workflow de deploy.yml" 
