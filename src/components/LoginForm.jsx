@@ -115,6 +115,12 @@ function LoginForm({ onLogin }) {
     }
   }, []);
 
+  // Obtener lista de usuarios para sugerencias
+  const usuariosGuardados = JSON.parse(localStorage.getItem('usuarios-auth')) || [];
+  const sugerencias = usuariosGuardados
+    .map(u => u.usuario)
+    .filter(u => u.toLowerCase().includes(formData.usuario.toLowerCase()) && formData.usuario.length > 0);
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex flex-col justify-center items-center py-12 px-4">
       <div className="container mx-auto px-4 py-8">
@@ -160,13 +166,32 @@ function LoginForm({ onLogin }) {
             <div className="bg-white p-8 rounded-xl shadow-xl max-w-sm w-full flex flex-col items-center gap-4 border border-blue-200">
               <h2 className="text-2xl font-bold text-blue-800 mb-4">Iniciar sesión</h2>
               <form className="w-full space-y-4" onSubmit={handleSubmit} autoComplete="off">
-                <input
-                  type="text"
-                  className="block w-full px-3 py-2 border border-blue-200 rounded-lg bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-400"
-                  placeholder="Usuario"
-                  value={formData.usuario}
-                  onChange={e => setFormData({ ...formData, usuario: e.target.value })}
-                />
+                <div>
+                  <label className="block text-gray-700 font-semibold mb-1">Usuario</label>
+                  <input
+                    type="text"
+                    className="w-full border rounded px-3 py-2 focus:outline-none focus:ring focus:border-blue-400"
+                    value={formData.usuario}
+                    onChange={e => setFormData({ ...formData, usuario: e.target.value })}
+                    autoComplete="off"
+                    list="sugerencias-usuarios"
+                    placeholder="Ingresa tu usuario"
+                  />
+                  {/* Sugerencias tipo dropdown */}
+                  {sugerencias.length > 0 && (
+                    <ul className="border border-gray-300 rounded bg-white mt-1 max-h-32 overflow-y-auto absolute z-10 w-full">
+                      {sugerencias.map((s, i) => (
+                        <li
+                          key={i}
+                          className="px-3 py-1 hover:bg-blue-100 cursor-pointer"
+                          onClick={() => setFormData({ ...formData, usuario: s })}
+                        >
+                          {s}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
                 <input
                   type="password"
                   className="block w-full px-3 py-2 border border-blue-200 rounded-lg bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-400"
