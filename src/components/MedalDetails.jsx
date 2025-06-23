@@ -1,6 +1,6 @@
 import React from 'react';
 import { FaTimes, FaMedal } from 'react-icons/fa';
-import { formatNumber, formatCompactNumber } from '../utils/formatters';
+import { formatNumber, formatCompactNumber, formatMedallas } from '../utils/formatters';
 
 function MedalDetails({ cuentas, onClose }) {
   const cuentasConMedallas = cuentas
@@ -61,7 +61,7 @@ function MedalDetails({ cuentas, onClose }) {
                     </p>
                   </div>
                   <div className="text-right flex-shrink-0">
-                    <p className="text-lg font-bold text-blue-600">{formatCompactNumber(cuenta.totalMedallas)}</p>
+                    <p className="text-lg font-bold text-blue-600">{formatMedallas(cuenta.totalMedallas)}</p>
                     <p className="text-xs text-gray-500">medallas</p>
                   </div>
                 </div>
@@ -76,7 +76,7 @@ function MedalDetails({ cuentas, onClose }) {
                         <div key={i} className="flex justify-between items-center bg-gray-50 p-1.5 rounded text-xs">
                           <span className="truncate flex-grow mr-2 min-w-0">{pj.nombre}</span>
                           <span className="font-medium text-blue-600 flex items-center gap-1 flex-shrink-0">
-                            {formatCompactNumber(pj.medallas)} <FaMedal className="text-xs text-yellow-500" />
+                            {formatMedallas(pj.medallas)} <FaMedal className="text-xs text-yellow-500" />
                           </span>
                         </div>
                       ))

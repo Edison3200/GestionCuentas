@@ -6,8 +6,8 @@ function SuccessNotification({
   message, 
   onClose, 
   type = 'success', 
-  duration = 3000,
-  position = 'top-right'
+  duration = 2000,
+  position = 'top-right' // Siempre top-right por defecto
 }) {
   const [isVisible, setIsVisible] = useState(false);
 
@@ -29,7 +29,7 @@ function SuccessNotification({
     }, 200); // Esperar a que termine la animación
   };
 
-  if (!isOpen) return null;
+  if (!isOpen || !message) return null; // Solo muestra si hay mensaje y está abierto
 
   const getIcon = () => {
     switch (type) {
@@ -77,9 +77,9 @@ function SuccessNotification({
   };
 
   return (
-    <div className={`fixed ${getPositionClasses()} z-50 transition-all duration-200 ${
+    <div className={`fixed ${getPositionClasses()} z-[2147483649] transition-all duration-200 ${
       isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-2'
-    }`}>
+    }`} style={{zIndex:2147483649}}>
       <div className={getClasses()}>
         <div className="flex-shrink-0">
           {getIcon()}

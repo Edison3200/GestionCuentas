@@ -8,7 +8,7 @@ function Footer() {
           <h1 className="text-2xl font-bold text-gray-800 mb-2">
             
           </h1>
-          <p className="text-gray-600">@Edisonc</p>
+          <p className="text-gray-600">@Risen</p>
         </div>
       </div>
     </footer>

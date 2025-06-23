@@ -11,7 +11,7 @@ import {
   FaFire,
   FaCalendarAlt
 } from 'react-icons/fa';
-import { formatNumber, formatCompactNumber } from '../utils/formatters';
+import { formatNumber, formatCompactNumber, formatMedallas } from '../utils/formatters';
 
 function AccountCard({
   cuenta,
@@ -110,7 +110,7 @@ function AccountCard({
         </div>
         <div className="text-center p-1.5 bg-yellow-50 rounded-lg">
           <div className="flex items-center justify-center gap-1 text-yellow-600 text-xs font-bold">
-            <span>{formatCompactNumber(cuenta.pejotas.reduce((total, pj) => total + (parseInt(pj.medallas) || 0), 0))}</span>
+            <span>{formatMedallas(cuenta.pejotas.reduce((total, pj) => total + (parseInt(pj.medallas) || 0), 0))}</span>
           </div>
           <div className="text-xs text-gray-600">Medallas</div>
         </div>

@@ -1,2 +1,60 @@
-node_modules
-dist/
+node_modules/
+
+# VSCode
+.vscode/
+
+# Sistema operativo
+.DS_Store
+Thumbs.db
+
+# Build
+/dist/
+/build/
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Entorno
+.env
+.env.*
+
+# Otros
+*.local
+
+# Paquetes lock (opcional, descomenta si no quieres subirlos)
+# package-lock.json
+# yarn.lock
+
+# Archivos temporales
+*.tmp
+*.swp
+
+# Archivos de configuración personal
+*.code-workspace
+
+# Archivos de pruebas
+coverage/
+
+# Archivos de configuración de sistema
+.idea/
+*.iml
+
+# Archivos de caché
+.cache/
+.next/
+.svelte-kit/
+
+# Archivos de bases de datos locales
+*.sqlite
+*.db
+
+# Archivos de backup
+*~
+*.bak
+
+# Otros archivos que no quieras subir
+clear-storage.js
+clear-users.html
+INSTRUCCIONES-LIMPIAR.md

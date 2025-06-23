@@ -22,14 +22,6 @@ function Header({
     { id: 'info', nombre: 'Información', icono: <FaInfoCircle /> }
   ];
 
-  // Mapeo local de nombre a emoji para mostrar correctamente el icono
-  const iconMap = {
-    man: '👨',
-    woman: '👩',
-    cat: '🐱',
-    dog: '🐶',
-  };
-
   useEffect(() => {
     setMostrarHeader(true); // Siempre visible al cargar o actualizar
   }, []);
@@ -82,9 +74,7 @@ function Header({
                   )}
                   <div className="flex items-center gap-2 bg-blue-100 px-3 py-1 rounded-full">
                     {usuarioLogueado.icono ? (
-                      <span className="text-2xl">
-                        {iconMap[usuarioLogueado.icono] || usuarioLogueado.icono}
-                      </span>
+                      <span className="text-2xl">{usuarioLogueado.icono}</span>
                     ) : (
                       <FaUser className="text-2xl text-blue-400" />
                     )}

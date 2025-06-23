@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { FaUserPlus, FaUser } from 'react-icons/fa';
+import { FaUserPlus, FaUser, FaCat, FaDog, FaUserAstronaut, FaUserNinja, FaUserSecret } from 'react-icons/fa';
 import AccountForm from './components/AccountForm';
 import AccountList from './components/AccountList';
 import MedalDetails from './components/MedalDetails';
@@ -18,7 +18,8 @@ import PjDetailsModal from './components/PjDetailsModal';
 import WeekCalendar from './components/WeekCalendar';
 import WeekCalendarCompact from './components/WeekCalendarCompact';
 import AboutPage from './components/AboutPage';
-import { formatNumber, formatCompactNumber } from './utils/formatters';
+import AgregarPjModal from './components/AgregarPjModal';
+import { formatNumber, formatCompactNumber, formatMedallas } from './utils/formatters';
 import './index.css';
 
 
@@ -52,12 +53,13 @@ function App() {
     }
   });
 
-  // Mapeo de nombre a emoji simple (hombre, mujer, gato, perro)
+  // Mapeo de nombre a ícono React
   const iconMap = {
-    man: '👨',
-    woman: '👩',
-    cat: '🐱',
-    dog: '🐶',
+    cat: <FaCat className="w-7 h-7 text-yellow-600" />,
+    dog: <FaDog className="w-7 h-7 text-orange-700" />,
+    astronaut: <FaUserAstronaut className="w-7 h-7 text-blue-700" />,
+    ninja: <FaUserNinja className="w-7 h-7 text-gray-700" />,
+    secret: <FaUserSecret className="w-7 h-7 text-purple-700" />,
   };
 
   // Función auxiliar
@@ -91,9 +93,8 @@ function App() {
     const sesionActiva = localStorage.getItem('sesion-activa');
     if (sesionActiva) {
       let usuario = JSON.parse(sesionActiva);
-      // Si el icono es un nombre, mostrar el emoji
       if (usuario.icono && typeof usuario.icono === 'string') {
-        usuario = { ...usuario, icono: iconMap[usuario.icono] || usuario.icono };
+        usuario = { ...usuario, icono: iconMap[usuario.icono] || '' };
       }
       setUsuarioLogueado(usuario);
       setUsuarioActual(usuario.usuario);
@@ -208,15 +209,12 @@ function App() {
 
   const handleLogin = (usuario) => {
     let user = { ...usuario };
-    // Si el icono es un nombre, buscar el emoji
     if (user.icono && typeof user.icono === 'string') {
-      user.icono = iconMap[user.icono] || user.icono;
+      user.icono = iconMap[user.icono] || '';
     }
     setUsuarioLogueado(user);
     setUsuarioActual(user.usuario);
-    // Guardar solo el string del nombre del icono (no el emoji) en localStorage
-    const usuarioParaGuardar = { ...usuario, icono: Object.keys(iconMap).find(key => iconMap[key] === user.icono) || user.icono };
-    localStorage.setItem('sesion-activa', JSON.stringify(usuarioParaGuardar));
+    localStorage.setItem('sesion-activa', JSON.stringify(usuario));
   };
 
   const handleLogout = () => {
@@ -275,7 +273,13 @@ function App() {
       isOpen: true,
       message: `¿Seguro que deseas eliminar todas las cuentas asociadas al correo "${correo}"?`,
       onConfirm: () => {
-        setCuentas(prev => prev.filter(c => c.correo !== correo));
+        setCuentas(prev => prev.filter(c => {
+          if (correo === 'Sin correo') {
+            return c.correo && c.correo.trim() !== '';
+          } else {
+            return c.correo !== correo;
+          }
+        }));
         setModalConfirm({ isOpen: false, message: '', onConfirm: null });
       }
     });
@@ -332,6 +336,7 @@ function App() {
     );
     setNuevoPj('');
     setMostrarAgregarPJ(false);
+    setMostrarDetalles(cuentaActiva); // Mostrar ventana de detalle de cuenta
     setSuccessNotification({
       isOpen: true,
       message: 'PJ agregado exitosamente.'
@@ -357,6 +362,30 @@ function App() {
       })
     );
   };
+
+  // Exponer alternarIngreso en window SIEMPRE con el estado más reciente
+  React.useEffect(() => {
+    window.alternarIngreso = (id) => {
+      setCuentas(prev => prev.map(c => {
+        if (c.id === id && c.ultimoIngreso !== hoy) {
+          const now = new Date();
+          const fecha = now.toLocaleDateString();
+          const hora = now.toLocaleTimeString();
+          const fechaHora = `${fecha} ${hora}`;
+          return {
+            ...c,
+            ingresado: true,
+            ultimoIngreso: fecha,
+            historial: [...c.historial, fechaHora]
+          };
+        }
+        return c;
+      }));
+    };
+    return () => {
+      window.alternarIngreso = undefined;
+    };
+  }, [hoy]);
 
   const editarPj = (cuentaId, index, campo, valor) => {
     setCuentas(prev =>
@@ -417,6 +446,14 @@ function App() {
   const [modalBusquedaPJ, setModalBusquedaPJ] = useState(null); // {cuenta, pj}
   const [mensajeBusquedaPJ, setMensajeBusquedaPJ] = useState('');
 
+  // Handler para mostrar notificación de guardado desde el modal de búsqueda
+  const handleBusquedaPjGuardado = () => {
+    setSuccessNotification({
+      isOpen: true,
+      message: '✅ Se ha guardado correctamente.'
+    });
+  };
+
   // Cambiar el input del buscador para usar busquedaPendiente
   // En el Header:
   // <Header filtro={busquedaPendiente} setFiltro={setBusquedaPendiente} ... />
@@ -440,30 +477,35 @@ function App() {
       return;
     }
     const coincidencias = [];
+    let exactaCuenta = null;
+    let parcialCuenta = null;
+    let coincidenciaPJ = null;
     cuentas.forEach(cuenta => {
-      // Buscar por nombre de cuenta
-      if (cuenta.nombre.toLowerCase().includes(busquedaPendiente.toLowerCase())) {
-        coincidencias.push({ cuenta, pj: null, idx: null, tipo: 'cuenta' });
+      // Coincidencia exacta de cuenta
+      if (cuenta.nombre.toLowerCase() === busquedaPendiente.toLowerCase()) {
+        exactaCuenta = { cuenta, pj: null, idx: null, tipo: 'cuenta' };
+      } else if (!parcialCuenta && cuenta.nombre.toLowerCase().includes(busquedaPendiente.toLowerCase())) {
+        parcialCuenta = { cuenta, pj: null, idx: null, tipo: 'cuenta' };
       }
       // Buscar por nombre o notas de PJ
       cuenta.pejotas.forEach((pj, idx) => {
-        if (
-          pj.nombre.toLowerCase().includes(busquedaPendiente.toLowerCase()) ||
-          (pj.notas && pj.notas.toLowerCase().includes(busquedaPendiente.toLowerCase()))
-        ) {
-          coincidencias.push({ cuenta, pj, idx, tipo: 'pj' });
+        if (!coincidenciaPJ && (pj.nombre.toLowerCase().includes(busquedaPendiente.toLowerCase()) || (pj.notas && pj.notas.toLowerCase().includes(busquedaPendiente.toLowerCase())))) {
+          coincidenciaPJ = { cuenta, pj, idx, tipo: 'pj' };
         }
       });
     });
-    if (coincidencias.length === 1) {
-      setModalBusquedaPJ(coincidencias[0]);
+    if (exactaCuenta) {
+      setModalBusquedaPJ(exactaCuenta);
       setMensajeBusquedaPJ('');
-    } else if (coincidencias.length > 1) {
-      setModalBusquedaPJ(null);
-      setMensajeBusquedaPJ(`Hay ${coincidencias.length} coincidencias para "${busquedaPendiente}". Especifica más.`);
+    } else if (parcialCuenta) {
+      setModalBusquedaPJ(parcialCuenta);
+      setMensajeBusquedaPJ('');
+    } else if (coincidenciaPJ) {
+      setModalBusquedaPJ(coincidenciaPJ);
+      setMensajeBusquedaPJ('');
     } else {
       setModalBusquedaPJ(null);
-      setMensajeBusquedaPJ(`No se encontró ningún PJ, cuenta o nota que coincida con "${busquedaPendiente}".`);
+      setMensajeBusquedaPJ('Aún no existen cuentas o correos que coincidan con tu búsqueda.');
     }
   }, [busquedaPendiente, cuentas]);
 
@@ -504,9 +546,18 @@ function App() {
   }
 
   return (
-    <div className="App">
-      <Header />
-      <main className="container mx-auto p-4">
+    <div className="min-h-screen bg-gray-50 flex flex-col">
+      <Header 
+        filtro={busquedaPendiente} 
+        setFiltro={setBusquedaPendiente}
+        pestañaActiva={pestañaActiva}
+        setPestañaActiva={setPestañaActiva}
+        usuarioLogueado={usuarioLogueado}
+        onLogout={handleLogout}
+        onOpenSuperUser={() => setMostrarSuperUser(true)}
+        onBuscarPj={buscarPj}
+      />
+      <main className="flex-grow">
         <div className="max-w-7xl mx-auto px-4 py-8">
           {pestañaActiva === 'usuarios' && (
             <UserManager 
@@ -605,46 +656,13 @@ function App() {
           />
           )}
           {mostrarAgregarPJ && (
-          <div className="modal-overlay">
-          <div className="modal-content max-w-md">
-          <div className="card-header">
-          <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
-          <FaUserPlus className="text-green-600" />
-          Agregar PJ
-          </h2>
-          </div>
-          <div className="card-body">
-          <div className="relative">
-          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-          <FaUser className="text-gray-400" />
-          </div>
-          <input
-          className="form-input with-icon"
-          placeholder="Nombre del PJ"
-          value={nuevoPj}
-          onChange={e => setNuevoPj(e.target.value)}
-          onKeyPress={e => e.key === 'Enter' && agregarPJACuenta()}
-          autoFocus
-          />
-          </div>
-          </div>
-          <div className="card-footer flex justify-end gap-3">
-          <button
-          onClick={() => setMostrarAgregarPJ(false)}
-          className="btn btn-secondary"
-          >
-          Cancelar
-          </button>
-          <button
-          onClick={agregarPJACuenta}
-          className="btn btn-success flex items-center gap-2"
-          >
-          <FaUserPlus className="w-4 h-4" />
-          Agregar PJ
-          </button>
-          </div>
-          </div>
-          </div>
+            <AgregarPjModal
+              isOpen={mostrarAgregarPJ}
+              onClose={() => setMostrarAgregarPJ(false)}
+              onAdd={agregarPJACuenta}
+              value={nuevoPj}
+              setValue={setNuevoPj}
+            />
           )}
           <AccountList
           cuentasPorCorreo={cuentasPorCorreo}
@@ -706,6 +724,7 @@ function App() {
       {mostrarDetalles && (
         <PjDetailsModal 
           cuenta={cuentas.find(c => c.id === mostrarDetalles)}
+          cuentas={cuentas}
           onClose={() => setMostrarDetalles(null)}
           editarPj={editarPj}
           eliminarPj={eliminarPj}
@@ -716,17 +735,21 @@ function App() {
       {modalBusquedaPJ && (
         <PjDetailsModal
           cuenta={modalBusquedaPJ.cuenta}
+          cuentas={cuentas}
           onClose={() => setModalBusquedaPJ(null)}
           editarPj={editarPj}
           eliminarPj={eliminarPj}
           setCuentaActiva={setCuentaActiva}
           setMostrarAgregarPJ={setMostrarAgregarPJ}
-          pjIndex={modalBusquedaPJ.idx}
+          pjIndex={modalBusquedaPJ.idx === undefined || modalBusquedaPJ.idx === null ? null : modalBusquedaPJ.idx}
+          onGuardado={handleBusquedaPjGuardado}
         />
       )}
       {mensajeBusquedaPJ && (
         <div className="fixed top-24 left-1/2 transform -translate-x-1/2 z-50 bg-yellow-100 border border-yellow-400 text-yellow-800 px-6 py-3 rounded shadow-lg animate-fadeIn">
-          {mensajeBusquedaPJ}
+          {mensajeBusquedaPJ === 'Aún no existen cuentas o correos que coincidan con tu búsqueda.'
+            ? 'No existen correos o cuentas.'
+            : mensajeBusquedaPJ}
         </div>
       )}
     </div>
@@ -737,6 +760,7 @@ function App() {
 function ResumenStats({ faltantesHoy, totalPjs, totalMedallas, tiempoRestante, setMostrarDetallesMedallas, horaReinicio, setHoraReinicio, usuarioActual, cuentas }) {
   const [showFull, setShowFull] = React.useState({ pjs: false, medallas: false });
   const [showCongrats, setShowCongrats] = React.useState(false);
+  const congratsTimeoutRef = React.useRef(); // <-- Nuevo ref para timeout
   const [editandoHora, setEditandoHora] = React.useState(false);
   const [anchorReinicio, setAnchorReinicio] = React.useState(null);
 
@@ -756,23 +780,32 @@ function ResumenStats({ faltantesHoy, totalPjs, totalMedallas, tiempoRestante, s
 
   const prevFaltantes = React.useRef(faltantesHoy);
   React.useEffect(() => {
-    if (prevFaltantes.current > 0 && faltantesHoy === 0) {
+    // Solo mostrar racha si ya existían cuentas antes
+    if (prevFaltantes.current > 0 && faltantesHoy === 0 && cuentas.length > 0) {
       setShowCongrats(true);
-      setTimeout(() => setShowCongrats(false), 3000);
+      if (congratsTimeoutRef.current) clearTimeout(congratsTimeoutRef.current); // Limpiar timeout previo
+      congratsTimeoutRef.current = setTimeout(() => {
+        setShowCongrats(false);
+        congratsTimeoutRef.current = null;
+      }, 3000);
     }
     prevFaltantes.current = faltantesHoy;
-  }, [faltantesHoy]);
+    // Limpiar timeout al desmontar
+    return () => {
+      if (congratsTimeoutRef.current) clearTimeout(congratsTimeoutRef.current);
+    };
+  }, [faltantesHoy, cuentas.length]);
   return (
     <div className="card">
       <div className="card-body">
         {/* Mensaje de alerta flotante tipo toast */}
         {showCongrats && (
           <div style={{
-            position: 'fixed',
-            top: '32px',
+            position: 'fixed', // Cambiado de absolute a fixed para que siga al usuario
+            top: '24px',
             left: '50%',
             transform: 'translateX(-50%)',
-            zIndex: 9999,
+            zIndex: 20,
             minWidth: '320px',
             background: 'linear-gradient(90deg, #fbbf24 0%, #22c55e 100%)',
             color: '#fff',
@@ -786,39 +819,55 @@ function ResumenStats({ faltantesHoy, totalPjs, totalMedallas, tiempoRestante, s
             justifyContent: 'center',
             gap: '1rem',
             textAlign: 'center',
-            animation: 'fadeIn 0.5s',
+            // Sin animación ni movimiento
           }}>
-            <span className="fire-effect" role="img" aria-label="fuego" style={{fontSize:'2rem'}}>🔥</span>
+            <span className="fire-effect" role="img" aria-label="fuego" style={{fontSize:'2rem'}}>
+              🔥
+            </span>
             <span style={{display:'inline-block', minWidth:'180px'}}>¡Felicidades! Has completado los ingresos de hoy</span>
-            <span className="fire-effect" role="img" aria-label="fuego" style={{fontSize:'2rem'}}>🔥</span>
+            <span className="fire-effect" role="img" aria-label="fuego" style={{fontSize:'2rem'}}>
+              🔥
+            </span>
           </div>
         )}
         {/* Mensaje especial si todas las cuentas han sido ingresadas */}
         <div className="stats-grid gap-2 md:gap-4">
           <div className={`stat-card stat-danger${faltantesHoy > 0 ? ' alert-aura' : ''}`}
-            style={{margin: 0}}>
-            <div className="stat-value">{formatNumber(faltantesHoy)}</div>
-            <div className="stat-label">Cuentas por ingresar</div>
+            style={{margin: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center'}}>
+            <div className="stat-value" style={{display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '2.5em'}}>
+              {cuentas.length === 0 ? (
+                <span className="text-gray-500 text-lg font-semibold">Aún no creas cuentas</span>
+              ) : faltantesHoy > 0 ? (
+                formatNumber(faltantesHoy)
+              ) : (
+                <span className="flex items-center gap-2 text-green-600" style={{justifyContent: 'center', width: '100%'}}>¡Estás al día! <span className="fire-effect" role="img" aria-label="fuego">🔥</span></span>
+              )}
+            </div>
+            {cuentas.length > 0 && faltantesHoy > 0 && <div className="stat-label">Cuentas por ingresar</div>}
           </div>
           <div className="stat-card stat-primary cursor-pointer" onClick={() => setShowFull(s => ({ ...s, pjs: !s.pjs }))} title="Click para alternar formato"
             style={{margin: 0}}>
             <div className="stat-value">
-              {showFull.pjs ? formatNumber(totalPjs) : formatCompactNumber(totalPjs)}
+              {showFull.pjs ? formatNumber(totalPjs) : formatMedallas(totalPjs)}
             </div>
             <div className="stat-label">Total PJs</div>
           </div>
-          <div className="stat-card stat-warning flex flex-col items-center justify-center relative"
-            style={{margin: 0}}>
+          <div className="stat-card stat-warning flex flex-col items-center justify-center relative cursor-pointer"
+            style={{margin: 0}}
+            onClick={() => setShowFull(s => ({ ...s, medallas: !s.medallas }))
+            }
+            title="Click para alternar formato"
+          >
             <button
               className="btn btn-secondary btn-xs absolute right-2 top-2 z-10"
               style={{fontSize:'0.85em', padding:'0.2em 0.7em'}}
-              onClick={() => setMostrarDetallesMedallas(true)}
+              onClick={e => { e.stopPropagation(); setMostrarDetallesMedallas(true); }}
               title="Ver Top Medallas"
             >
               🏆 Top
             </button>
             <div className="stat-value flex items-center gap-2">
-              {showFull.medallas ? formatNumber(totalMedallas) : formatCompactNumber(totalMedallas)}
+              {showFull.medallas ? formatNumber(totalMedallas) : formatMedallas(totalMedallas)}
             </div>
             <div className="stat-label">Total Medallas</div>
           </div>

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { FaUserPlus, FaSignInAlt, FaChartLine, FaShieldAlt, FaCloud } from 'react-icons/fa';
+import { FaUserPlus, FaSignInAlt, FaChartLine, FaShieldAlt, FaCloud, FaCat, FaDog, FaUserAstronaut, FaUserNinja, FaUserSecret } from 'react-icons/fa';
 
 function LoginForm({ onLogin }) {
   const [showForm, setShowForm] = useState(false);
@@ -14,12 +14,12 @@ function LoginForm({ onLogin }) {
   const [forgotMsg, setForgotMsg] = useState('');
   const [forgotPregunta, setForgotPregunta] = useState('');
 
-  // Opciones de icono/avatar: hombre, mujer, gato, perro
   const iconOptions = [
-    { name: 'man', icon: '👨' },
-    { name: 'woman', icon: '👩' },
-    { name: 'cat', icon: '🐱' },
-    { name: 'dog', icon: '🐶' },
+    { name: 'cat', icon: <FaCat className="w-7 h-7 text-yellow-600" /> },
+    { name: 'dog', icon: <FaDog className="w-7 h-7 text-orange-700" /> },
+    { name: 'astronaut', icon: <FaUserAstronaut className="w-7 h-7 text-blue-700" /> },
+    { name: 'ninja', icon: <FaUserNinja className="w-7 h-7 text-gray-700" /> },
+    { name: 'secret', icon: <FaUserSecret className="w-7 h-7 text-purple-700" /> },
   ];
 
   const features = [
@@ -70,7 +70,6 @@ function LoginForm({ onLogin }) {
       setRegisterError('El usuario ya existe');
       return;
     }
-    // Guardar solo el nombre del icono (no el emoji)
     usuarios.push({ ...registerData, icono: registerData.icono });
     localStorage.setItem('usuarios-auth', JSON.stringify(usuarios));
     setShowForm('login'); // Redirige al login tras registrar
@@ -115,11 +114,14 @@ function LoginForm({ onLogin }) {
     }
   }, []);
 
-  // Obtener lista de usuarios para sugerencias
-  const usuariosGuardados = JSON.parse(localStorage.getItem('usuarios-auth')) || [];
-  const sugerencias = usuariosGuardados
-    .map(u => u.usuario)
-    .filter(u => u.toLowerCase().includes(formData.usuario.toLowerCase()) && formData.usuario.length > 0);
+  // Bloquear scroll del body cuando hay modal abierto
+  React.useEffect(() => {
+    if (showForm === 'login' || showForm === 'register' || showForgot) {
+      const original = document.body.style.overflow;
+      document.body.style.overflow = 'hidden';
+      return () => { document.body.style.overflow = original; };
+    }
+  }, [showForm, showForgot]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex flex-col justify-center items-center py-12 px-4">
@@ -162,36 +164,17 @@ function LoginForm({ onLogin }) {
           ))}
         </div>
         {showForm === 'login' && (
-          <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
-            <div className="bg-white p-8 rounded-xl shadow-xl max-w-sm w-full flex flex-col items-center gap-4 border border-blue-200">
+          <div className="fixed inset-0 bg-black bg-opacity-40 z-[2147483647]" style={{zIndex:2147483647}}>
+            <div className="bg-white p-8 rounded-xl shadow-xl max-w-sm w-full border border-blue-200" style={{position:'fixed',top:'50%',left:'50%',transform:'translate(-50%,-50%)',zIndex:2147483647,boxShadow:'0 8px 32px rgba(0,0,0,0.25)',maxHeight:'90vh',overflowY:'auto'}}>
               <h2 className="text-2xl font-bold text-blue-800 mb-4">Iniciar sesión</h2>
               <form className="w-full space-y-4" onSubmit={handleSubmit} autoComplete="off">
-                <div>
-                  <label className="block text-gray-700 font-semibold mb-1">Usuario</label>
-                  <input
-                    type="text"
-                    className="w-full border rounded px-3 py-2 focus:outline-none focus:ring focus:border-blue-400"
-                    value={formData.usuario}
-                    onChange={e => setFormData({ ...formData, usuario: e.target.value })}
-                    autoComplete="off"
-                    list="sugerencias-usuarios"
-                    placeholder="Ingresa tu usuario"
-                  />
-                  {/* Sugerencias tipo dropdown */}
-                  {sugerencias.length > 0 && (
-                    <ul className="border border-gray-300 rounded bg-white mt-1 max-h-32 overflow-y-auto absolute z-10 w-full">
-                      {sugerencias.map((s, i) => (
-                        <li
-                          key={i}
-                          className="px-3 py-1 hover:bg-blue-100 cursor-pointer"
-                          onClick={() => setFormData({ ...formData, usuario: s })}
-                        >
-                          {s}
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
+                <input
+                  type="text"
+                  className="block w-full px-3 py-2 border border-blue-200 rounded-lg bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-400"
+                  placeholder="Usuario"
+                  value={formData.usuario}
+                  onChange={e => setFormData({ ...formData, usuario: e.target.value })}
+                />
                 <input
                   type="password"
                   className="block w-full px-3 py-2 border border-blue-200 rounded-lg bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-400"
@@ -227,8 +210,8 @@ function LoginForm({ onLogin }) {
           </div>
         )}
         {showForm === 'register' && (
-          <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
-            <div className="bg-white p-8 rounded-xl shadow-xl max-w-sm w-full flex flex-col items-center gap-4 border border-green-200">
+          <div className="fixed inset-0 bg-black bg-opacity-40 z-[2147483647]" style={{zIndex:2147483647}}>
+            <div className="bg-white p-8 rounded-xl shadow-xl max-w-sm w-full border border-green-200" style={{position:'fixed',top:'50%',left:'50%',transform:'translate(-50%,-50%)',zIndex:2147483647,boxShadow:'0 8px 32px rgba(0,0,0,0.25)',maxHeight:'90vh',overflowY:'auto'}}>
               <h2 className="text-2xl font-bold text-green-800 mb-4">Registro de usuario</h2>
               <form className="w-full space-y-4" onSubmit={handleRegister} autoComplete="off">
                 <input
@@ -276,7 +259,7 @@ function LoginForm({ onLogin }) {
                         onClick={() => setRegisterData({ ...registerData, icono: icon.name })}
                         aria-label={icon.name}
                       >
-                        <span style={{fontSize:'2rem'}}>{icon.icon}</span>
+                        {icon.icon}
                       </button>
                     ))}
                   </div>
@@ -300,8 +283,8 @@ function LoginForm({ onLogin }) {
           </div>
         )}
         {showForgot && (
-          <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
-            <div className="bg-white p-8 rounded-xl shadow-xl max-w-sm w-full flex flex-col items-center gap-4 border border-yellow-200">
+          <div className="fixed inset-0 bg-black bg-opacity-40 z-[2147483647]" style={{zIndex:2147483647}}>
+            <div className="bg-white p-8 rounded-xl shadow-xl max-w-sm w-full border border-yellow-200" style={{position:'fixed',top:'50%',left:'50%',transform:'translate(-50%,-50%)',zIndex:2147483647,boxShadow:'0 8px 32px rgba(0,0,0,0.25)',maxHeight:'90vh',overflowY:'auto'}}>
               <h2 className="text-2xl font-bold text-yellow-700 mb-4">Recuperar contraseña</h2>
               <form className="w-full space-y-4" onSubmit={handleForgot} autoComplete="off">
                 {forgotStep === 1 && (

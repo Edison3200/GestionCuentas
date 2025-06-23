@@ -1,6 +1,6 @@
 import React from 'react';
 import AccountCard from './AccountCard';
-import { formatNumber, formatCompactNumber } from '../utils/formatters';
+import { formatNumber, formatCompactNumber, formatMedallas } from '../utils/formatters';
 
 const coloresDisponibles = [
   'bg-pastel-blue',
@@ -25,16 +25,17 @@ function AccountList({
   eliminarCuentasPorCorreo
 }) {
   return (
-    <>
+    <div style={{maxHeight: '60vh', overflowY: 'auto', paddingRight: 12, marginRight: 8}}>
       {Object.keys(cuentasPorCorreo).length === 0 && (
         <div className="text-center text-gray-500 py-8 text-lg">
-          No se encontraron resultados para tu búsqueda.
+          Aún no ingresas cuentas ni correos.
         </div>
       )}
       {Object.entries(cuentasPorCorreo).map(([correo, grupo], idx) => (
         <div
           key={correo}
-          className={`mb-6 p-4 rounded ${coloresDisponibles[idx % coloresDisponibles.length]} shadow-md`}
+          className={`mb-8 p-4 rounded ${coloresDisponibles[idx % coloresDisponibles.length]} shadow-md`}
+          style={{ maxHeight: '340px', overflowY: 'auto', paddingRight: 8, marginBottom: 24 }}
         >
           <h2 className="text-lg font-bold mb-4 truncate flex justify-between items-center">
             <span>Correo: {correo}
@@ -54,9 +55,9 @@ function AccountList({
                 {' '}
                 <span className="text-blue-700">{formatCompactNumber(grupo.reduce((total, cuenta) => total + cuenta.pejotas.length, 0))} PJs</span> | 
                 {' '}
-                <span className="text-yellow-600">{formatCompactNumber(grupo.reduce((total, cuenta) => 
-                  total + cuenta.pejotas.reduce((sum, pj) => sum + (parseInt(pj.medallas) || 0), 0), 0
-                ))} 🏅</span>
+                <span className="text-yellow-600">{formatMedallas(grupo.reduce((total, cuenta) => 
+                  total + cuenta.pejotas.reduce((sum, pj) => sum + (parseInt(pj.medallas) || 0), 0)
+                , 0))} Medallas</span>
               </span>
             )}
           </h2>
@@ -82,7 +83,7 @@ function AccountList({
           )}
         </div>
       ))}
-    </>
+    </div>
   );
 }
 

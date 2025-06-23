@@ -215,7 +215,8 @@ body {
   position: relative;
   width: 100%;
   max-width: 32rem;
-  max-height: 90vh;
+  max-height: calc(100vh - 48px); /* Deja 24px arriba y abajo */
+  margin-block: 24px; /* Margen arriba y abajo para evitar que se pegue */
   overflow-y: auto;
 }
 /* Formulario modal específico */

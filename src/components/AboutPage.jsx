@@ -23,11 +23,6 @@ export default function AboutPage() {
           <li>Soporte para dispositivos móviles y diferentes zonas horarias.</li>
         </ul>
       </p>
-      <div className="mt-6 border-t pt-4">
-        <h3 className="text-lg font-bold text-gray-800 mb-2">Contacto</h3>
-        <p className="text-gray-700">Edison Cabrera</p>
-        <p className="text-gray-700">edisoncabrera3200@gmail.com</p>
-      </div>
     </div>
   );
 }
