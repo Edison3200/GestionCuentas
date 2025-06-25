@@ -21,9 +21,46 @@ function WeekCalendarCompact({ historial, totalCuentas }) {
   const today = new Date();
   const [offset, setOffset] = useState(0);
   const dias = getWeekDays(today, offset, 3);
+  
+  // Calcular racha actual
+  const calcularRacha = () => {
+    if (!historial || totalCuentas === 0) return 0;
+    
+    const fechas = Object.keys(historial)
+      .filter(fecha => {
+        const info = historial[fecha];
+        return info && info.ingresosDia >= totalCuentas;
+      })
+      .sort((a, b) => new Date(b) - new Date(a)); // Más reciente primero
+    
+    if (fechas.length === 0) return 0;
+    
+    let racha = 1;
+    for (let i = 1; i < fechas.length; i++) {
+      const fechaActual = new Date(fechas[i-1]);
+      const fechaAnterior = new Date(fechas[i]);
+      const diferenciaDias = (fechaActual - fechaAnterior) / (1000 * 60 * 60 * 24);
+      
+      if (diferenciaDias === 1) {
+        racha++;
+      } else {
+        break;
+      }
+    }
+    
+    return racha;
+  };
+  
+  const rachaActual = calcularRacha();
 
   return (
     <div className="flex gap-2 items-center">
+      {rachaActual > 0 && (
+        <div className="flex items-center gap-1 px-2 py-1 bg-red-100 rounded-lg border border-red-300">
+          <span className="text-red-600 text-sm font-bold">🔥</span>
+          <span className="text-red-700 text-xs font-bold">{rachaActual}</span>
+        </div>
+      )}
       <button
         className="px-2 py-1 text-gray-500 hover:text-blue-600 text-lg font-bold"
         onClick={() => setOffset(o => o - 1)}

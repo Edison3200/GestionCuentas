@@ -31,41 +31,40 @@ function AccountCard({
     ? (cuenta.correo || 'Sin correo')
     : cuenta.nombre;
 
-  // Calcular días consecutivos (sin reinicio automático)
+  // Calcular días consecutivos basado en historial global
   const calcularDiasConsecutivos = () => {
-    if (!cuenta.historial || cuenta.historial.length === 0) return 0;
-    
-    let diasConsecutivos = 0;
-    const fechaActual = new Date();
-    
-    // Ordenar historial por fecha (más reciente primero)
-    const historialOrdenado = [...cuenta.historial].sort((a, b) => new Date(b) - new Date(a));
-    
-    // Contar días consecutivos desde la fecha más reciente
-    let fechaAnterior = null;
-    for (const entrada of historialOrdenado) {
-      const fechaHistorial = new Date(entrada.split(' ')[0]);
+    try {
+      const historialGlobal = JSON.parse(localStorage.getItem(`historial-diario-${cuenta.nombre?.split('@')[0] || 'usuario'}`) || '{}');
+      const fechas = Object.keys(historialGlobal).sort().reverse(); // Más reciente primero
       
-      if (fechaAnterior === null) {
-        // Primera fecha
+      if (fechas.length === 0) return 0;
+      
+      let diasConsecutivos = 0;
+      const hoy = new Date().toISOString().split('T')[0];
+      
+      // Verificar si ingresó hoy
+      if (cuenta.ultimoIngreso === hoy) {
         diasConsecutivos = 1;
-        fechaAnterior = fechaHistorial;
-      } else {
-        // Verificar si es el día anterior
-        const fechaEsperada = new Date(fechaAnterior);
-        fechaEsperada.setDate(fechaEsperada.getDate() - 1);
         
-        if (fechaHistorial.toDateString() === fechaEsperada.toDateString()) {
-          diasConsecutivos++;
-          fechaAnterior = fechaHistorial;
-        } else {
-          // Se rompió la racha, pero no reiniciamos
-          break;
+        // Contar días consecutivos hacia atrás
+        for (let i = 1; i < fechas.length; i++) {
+          const fechaActual = new Date(fechas[i-1]);
+          const fechaAnterior = new Date(fechas[i]);
+          const diferenciaDias = (fechaActual - fechaAnterior) / (1000 * 60 * 60 * 24);
+          
+          if (diferenciaDias === 1) {
+            diasConsecutivos++;
+          } else {
+            break;
+          }
         }
       }
+      
+      return diasConsecutivos;
+    } catch (error) {
+      console.error('Error calculando racha:', error);
+      return 0;
     }
-    
-    return diasConsecutivos;
   };
 
   const diasConsecutivos = calcularDiasConsecutivos();
@@ -132,17 +131,7 @@ function AccountCard({
           <FaChevronDown className="text-xs" />
           Detalles
         </button>
-        <button
-          className="btn btn-success text-xs flex items-center gap-1"
-          onClick={() => {
-            setCuentaActiva(cuenta.id);
-            setMostrarAgregarPJ(true);
-          }}
-          title="Agregar PJ"
-        >
-          <FaPlus className="text-xs" />
-          PJ
-        </button>
+
                 <button
           className="btn btn-danger text-xs"
           onClick={() => eliminarCuenta(cuenta.id)}

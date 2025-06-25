@@ -1,9 +1,10 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import ReactDOM from 'react-dom';
 import { FaUserPlus, FaUser } from 'react-icons/fa';
 
-function AgregarPjModal({ isOpen, onClose, onAdd, value, setValue }) {
+function AgregarPjModal({ isOpen, onClose, onAdd, value, setValue, cuentas, cuentaActiva }) {
   const inputRef = useRef(null);
+  const [error, setError] = useState('');
 
   // Bloquear scroll del body y enfocar input
   useEffect(() => {
@@ -19,6 +20,22 @@ function AgregarPjModal({ isOpen, onClose, onAdd, value, setValue }) {
       document.body.style.overflow = '';
     };
   }, [isOpen]);
+
+  const handleAdd = () => {
+    if (!value.trim()) {
+      setError('Por favor ingresa un nombre para el PJ');
+      return;
+    }
+    
+    // Verificar nombres duplicados
+    const cuenta = cuentas?.find(c => c.id === cuentaActiva);
+    if (cuenta && cuenta.pejotas.some(pj => pj.nombre.toLowerCase() === value.trim().toLowerCase())) {
+      setError('El nombre ya existe');
+      return;
+    }
+    
+    onAdd();
+  };
 
   if (!isOpen) return null;
 
@@ -38,13 +55,21 @@ function AgregarPjModal({ isOpen, onClose, onAdd, value, setValue }) {
             </div>
             <input
               ref={inputRef}
-              className="form-input with-icon"
+              className={`form-input with-icon ${error ? 'border-red-500' : ''}`}
               placeholder="Nombre del PJ"
               value={value}
-              onChange={e => setValue(e.target.value)}
-              onKeyPress={e => e.key === 'Enter' && onAdd()}
+              onChange={e => {
+                setValue(e.target.value);
+                if (error) setError('');
+              }}
+              onKeyPress={e => e.key === 'Enter' && handleAdd()}
               autoFocus
             />
+            {error && (
+              <div className="text-red-600 text-sm mt-2">
+                {error}
+              </div>
+            )}
           </div>
         </div>
         <div className="card-footer flex justify-end gap-3">
@@ -55,7 +80,7 @@ function AgregarPjModal({ isOpen, onClose, onAdd, value, setValue }) {
             Cancelar
           </button>
           <button
-            onClick={onAdd}
+            onClick={handleAdd}
             className="btn btn-success flex items-center gap-2"
           >
             <FaUserPlus className="w-4 h-4" />

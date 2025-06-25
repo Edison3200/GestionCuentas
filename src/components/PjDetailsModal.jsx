@@ -18,6 +18,9 @@ import PortalModal from './PortalModal';
 function PjDetailsModal({ 
   cuenta, 
   cuentas, // nuevo prop
+  hoy,
+  alternarIngreso,
+  modoSeguimiento,
   onClose, 
   editarPj, 
   eliminarPj, 
@@ -28,7 +31,6 @@ function PjDetailsModal({
 }) {
   // Buscar la cuenta actualizada por id
   const cuentaActual = cuentas ? cuentas.find(c => c.id === cuenta.id) || cuenta : cuenta;
-  const hoy = new Date().toLocaleDateString();
   const [mostrarTodosPjs, setMostrarTodosPjs] = useState(false);
   const [pjNotasAbiertas, setPjNotasAbiertas] = useState({});
   const [modalPj, setModalPj] = useState(null); // índice del PJ a mostrar en modal
@@ -166,11 +168,11 @@ function PjDetailsModal({
                     {formatNumber(diasConsecutivos)} días consecutivos
                   </span>
                 </div>
-                {/* Botón de ingreso SOLO si la ventana es por búsqueda de cuenta (pjIndex no es número) */}
-                {typeof pjIndex !== 'number' && (
+                {/* Botón de ingreso SOLO si no está en modo seguimiento */}
+                {!modoSeguimiento && alternarIngreso && (
                   <button
                     className={`ml-4 p-2 rounded-full text-white transition-all duration-200 ${cuentaActual.ultimoIngreso === hoy ? 'bg-green-600 hover:bg-green-700' : 'bg-gray-500 hover:bg-gray-600'}`}
-                    onClick={() => window.alternarIngreso && window.alternarIngreso(cuenta.id)}
+                    onClick={() => alternarIngreso(cuenta.id)}
                     title={cuentaActual.ultimoIngreso === hoy ? 'Ya ingresado hoy' : 'Marcar ingreso'}
                     disabled={cuentaActual.ultimoIngreso === hoy}
                   >

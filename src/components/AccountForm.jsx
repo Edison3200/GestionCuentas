@@ -33,8 +33,10 @@ function AccountForm({ nuevaCuenta, setNuevaCuenta, agregarCuenta, cancelar, cue
       newErrors.nombre = 'Ya existe una cuenta con este nombre';
     }
 
-    // Validar correo solo si hay contenido
-    if (nuevaCuenta.correo.trim() !== '') {
+    // Validar correo (obligatorio)
+    if (!nuevaCuenta.correo.trim()) {
+      newErrors.correo = 'El correo electrónico es obligatorio';
+    } else {
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       if (!emailRegex.test(nuevaCuenta.correo.trim())) {
         newErrors.correo = 'Formato de correo inválido';
@@ -143,8 +145,7 @@ function AccountForm({ nuevaCuenta, setNuevaCuenta, agregarCuenta, cancelar, cue
           {/* Campo Correo */}
           <div className="form-field">
             <label htmlFor="correo" className="block text-sm font-semibold text-gray-700 mb-2">
-              Correo electrónico
-              <span className="text-gray-500 font-normal ml-1">(opcional)</span>
+              Correo electrónico *
             </label>
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
