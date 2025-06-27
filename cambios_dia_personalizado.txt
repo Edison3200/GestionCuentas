@@ -1,0 +1,116 @@
+CAMBIOS NECESARIOS PARA DÍA PERSONALIZADO:
+
+1. REEMPLAZAR la línea que dice:
+   const faltantesHoy = cuentas.filter(c => c.ultimoIngreso !== hoy).length;
+
+   POR:
+   // Calcular día personalizado actual
+   const diaPersonalizadoActual = (() => {
+     const [hora, minuto] = horaReinicio.split(':').map(Number);
+     const ahora = new Date();
+     const horaReinicioHoy = new Date();
+     horaReinicioHoy.setHours(hora, minuto, 0, 0);
+     
+     if (ahora < horaReinicioHoy) {
+       const diaAnterior = new Date();
+       diaAnterior.setDate(diaAnterior.getDate() - 1);
+       return diaAnterior.toISOString().split('T')[0];
+     }
+     
+     return ahora.toISOString().split('T')[0];
+   })();
+   
+   const faltantesHoy = cuentas.filter(c => c.ultimoIngreso !== diaPersonalizadoActual).length;
+
+2. REEMPLAZAR la función alternarIngreso completa POR:
+
+const alternarIngreso = async (id) => {
+  if (!id || isNaN(parseInt(id))) {
+    console.error('ID de cuenta no válido:', id);
+    return;
+  }
+  
+  const now = new Date();
+  // Calcular día personalizado basado en hora de reinicio
+  const [hora, minuto] = horaReinicio.split(':').map(Number);
+  const horaReinicioHoy = new Date();
+  horaReinicioHoy.setHours(hora, minuto, 0, 0);
+  
+  const diaPersonalizado = now < horaReinicioHoy 
+    ? new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+    : now.toISOString().split('T')[0];
+  
+  const cuenta = cuentas.find(c => c.id === id);
+  
+  if (!cuenta) return;
+  
+  // Verificar si ya marcó ingreso en este día personalizado
+  if (cuenta.ultimoIngreso === diaPersonalizado) {
+    setMensajeError(`Ya marcaste ingreso hoy. Próximo reinicio a las ${horaReinicio}`);
+    setTimeout(() => setMensajeError(''), 3000);
+    return;
+  }
+  
+  // Actualizar estado local PRIMERO (respuesta inmediata)
+  setCuentas(prev =>
+    prev.map(c => {
+      if (c.id === id) {
+        return {
+          ...c,
+          ingresado: true,
+          ultimoIngreso: diaPersonalizado,
+          historial: [...c.historial, `${diaPersonalizado} ${now.toLocaleTimeString()}`]
+        };
+      }
+      return c;
+    })
+  );
+  
+  // Actualizar base de datos en segundo plano
+  try {
+    await Promise.all([
+      cuentaService.actualizar(id, {
+        ingresado: true,
+        ultimo_ingreso: diaPersonalizado
+      }),
+      historialService.crear({
+        cuenta_id: id,
+        fecha_ingreso: now.toISOString()
+      })
+    ]);
+    
+    setSuccessNotification({
+      isOpen: true,
+      message: `✅ Ingreso registrado para ${cuenta.nombre}`
+    });
+    
+  } catch (error) {
+    console.error('Error actualizando base de datos:', error);
+    // Revertir cambio local si falla la base de datos
+    setCuentas(prev =>
+      prev.map(c => {
+        if (c.id === id) {
+          return {
+            ...c,
+            ingresado: false,
+            ultimoIngreso: null,
+            historial: c.historial.slice(0, -1)
+          };
+        }
+        return c;
+      })
+    );
+  }
+};
+
+3. TAMBIÉN cambiar en guardarHistorialDiario la línea:
+   const ingresosDia = cuentas.filter(c => c.ultimoIngreso === hoy).length;
+   
+   POR:
+   const ingresosDia = cuentas.filter(c => c.ultimoIngreso === diaPersonalizadoActual).length;
+
+4. Y cambiar:
+   ingresado: cuenta.ultimoIngreso === hoy,
+   
+   POR:
+   ingresado: cuenta.ultimoIngreso === diaPersonalizadoActual,

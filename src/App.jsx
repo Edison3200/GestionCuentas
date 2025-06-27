@@ -67,6 +67,7 @@ function App() {
   const [nuevoPj, setNuevoPj] = useState('');
   const [formVisible, setFormVisible] = useState(false);
   const [filtro, setFiltro] = useState('');
+  const [usuarioActual, setUsuarioActual] = useState('');
   const [horaReinicio, setHoraReinicio] = useState('22:00');
   const [mostrarResumen, setMostrarResumen] = useState(true);
   const [mostrarDetalles, setMostrarDetalles] = useState(null);
@@ -76,7 +77,6 @@ function App() {
     const [mostrarSoloCorreos, setMostrarSoloCorreos] = useState(false);
   const [modalConfirm, setModalConfirm] = useState({ isOpen: false, message: '', onConfirm: null });
   const [successNotification, setSuccessNotification] = useState({ isOpen: false, message: '' });
-  const [usuarioActual, setUsuarioActual] = useState('');
   const [pestañaActiva, setPestañaActiva] = useState('inicio');
   const [usuarioLogueado, setUsuarioLogueado] = useState(null);
   const [mostrarSuperUser, setMostrarSuperUser] = useState(false);
@@ -121,7 +121,24 @@ function App() {
   // Función auxiliar - fecha actual
   const hoy = new Date().toISOString().split('T')[0]; // Formato YYYY-MM-DD
   
-  // Función para verificar si es hora de reiniciar
+  // Función para calcular el día personalizado basado en la hora de reinicio
+  const obtenerDiaPersonalizado = (fecha = new Date()) => {
+    const [hora, minuto] = horaReinicio.split(':').map(Number);
+    const fechaActual = new Date(fecha);
+    const horaReinicioHoy = new Date(fechaActual);
+    horaReinicioHoy.setHours(hora, minuto, 0, 0);
+    
+    if (fechaActual < horaReinicioHoy) {
+      const diaAnterior = new Date(fechaActual);
+      diaAnterior.setDate(diaAnterior.getDate() - 1);
+      return diaAnterior.toISOString().split('T')[0];
+    }
+    
+    return fechaActual.toISOString().split('T')[0];
+  };
+  
+  const diaPersonalizadoActual = obtenerDiaPersonalizado();
+  
   const esHoraDeReinicio = useCallback(() => {
     const ahora = new Date();
     const [hora, minuto] = horaReinicio.split(':').map(Number);
@@ -135,13 +152,13 @@ function App() {
     
     try {
       const historial = JSON.parse(localStorage.getItem(`historial-diario-${usuarioActual}`)) || {};
-      const ingresosDia = cuentas.filter(c => c.ultimoIngreso === hoy).length;
+      const ingresosDia = cuentas.filter(c => c.ultimoIngreso === diaPersonalizadoActual).length;
       const medallasGanadas = cuentas.reduce((total, cuenta) => 
         total + (cuenta.pejotas?.reduce((sum, pj) => sum + (parseInt(pj.medallas) || 0), 0) || 0), 0
       );
       
-      historial[hoy] = {
-        fecha: hoy,
+      historial[diaPersonalizadoActual] = {
+        fecha: diaPersonalizadoActual,
         ingresosDia,
         medallasGanadas,
         totalCuentas: cuentas.length,
@@ -149,19 +166,19 @@ function App() {
         cuentas: cuentas.map(cuenta => ({
           nombre: cuenta.nombre,
           correo: cuenta.correo,
-          ingresado: cuenta.ultimoIngreso === hoy,
+          ingresado: cuenta.ultimoIngreso === diaPersonalizadoActual,
           pejotas: cuenta.pejotas || []
         }))
       };
       
       localStorage.setItem(`historial-diario-${usuarioActual}`, JSON.stringify(historial));
-      console.log('Historial guardado para:', hoy, historial[hoy]);
+      console.log('Historial guardado para:', diaPersonalizadoActual, historial[diaPersonalizadoActual]);
     } catch (error) {
       console.error('Error guardando historial:', error);
     }
-  }, [usuarioActual, cuentas, hoy]);
+  }, [usuarioActual, cuentas, diaPersonalizadoActual]);
 
-  // Efecto: Mantener sesión activa
+  // Efecto: Mantener sesión activa y cargar hora de reinicio
   useEffect(() => {
     const sesionActiva = localStorage.getItem('sesion-activa');
     if (sesionActiva) {
@@ -171,6 +188,11 @@ function App() {
       }
       setUsuarioLogueado(usuario);
       setUsuarioActual(usuario.usuario);
+      
+      const horaGuardada = localStorage.getItem(`hora-reinicio-${usuario.usuario}`);
+      if (horaGuardada) {
+        setHoraReinicio(horaGuardada);
+      }
     }
   }, []);
 
@@ -207,7 +229,22 @@ function App() {
     return () => clearInterval(interval);
   }, [usuarioLogueado, usuarioActual]);
 
-  // Detectar zona horaria local del usuario
+  // Efecto: Guardar hora de reinicio personalizada
+  useEffect(() => {
+    if (usuarioActual && horaReinicio) {
+      localStorage.setItem(`hora-reinicio-${usuarioActual}`, horaReinicio);
+      localStorage.removeItem(`ultimoReinicio-${usuarioActual}`);
+    }
+  }, [horaReinicio, usuarioActual]);
+
+  const cambiarHoraReinicio = (nuevaHora) => {
+    setHoraReinicio(nuevaHora);
+    setSuccessNotification({
+      isOpen: true,
+      message: `⏰ Hora de reinicio actualizada a ${nuevaHora}`
+    });
+  };
+
   const zonaHorariaLocal = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
   // Efecto: Cargar datos de Supabase
@@ -327,88 +364,8 @@ function App() {
     }
   }, [cuentas, guardarHistorialDiario]);
   
-  // Efecto: Reinicio automático basado en Supabase
-  useEffect(() => {
-    if (!usuarioActual || !usuarioId) return;
-    
-    const verificarReinicio = async () => {
-      try {
-        const ahora = new Date();
-        const [hora, minuto] = horaReinicio.split(':').map(Number);
-        const reinicioHoy = new Date();
-        reinicioHoy.setHours(hora, minuto, 0, 0);
-        
-        // Solo proceder si ya pasó la hora de reinicio
-        if (ahora < reinicioHoy) return;
-        
-        const fechaHoy = ahora.toISOString().split('T')[0];
-        
-        // Verificar si ya se reinició hoy
-        const ultimoReinicio = localStorage.getItem(`ultimoReinicio-${usuarioActual}`);
-        if (ultimoReinicio === fechaHoy) return; // Ya se reinició hoy
-        
-        console.log('=== REINICIO DIARIO INICIADO ===');
-        console.log('Fecha:', fechaHoy, 'Hora:', ahora.toLocaleTimeString());
-        
-        // Marcar como reiniciado
-        localStorage.setItem(`ultimoReinicio-${usuarioActual}`, fechaHoy);
-        
-        // Resetear ingresos en base de datos
-        const updates = [];
-        for (const cuenta of cuentas) {
-          updates.push(cuentaService.actualizar(cuenta.id, { ultimo_ingreso: null }));
-        }
-        
-        // Auto-aumento de medallas si está habilitado
-        const medallasConfig = JSON.parse(localStorage.getItem(`medallas-config-${usuarioActual}`) || '{"cantidad": 0, "autoAumento": false}');
-        if (medallasConfig.autoAumento && medallasConfig.cantidad > 0) {
-          console.log(`Auto-aumentando ${medallasConfig.cantidad} medallas`);
-          for (const cuenta of cuentas) {
-            for (const pj of cuenta.pejotas) {
-              updates.push(personajeService.actualizar(pj.id, {
-                medallas: (pj.medallas || 0) + medallasConfig.cantidad
-              }));
-            }
-          }
-        }
-        
-        await Promise.all(updates);
-        console.log('=== REINICIO COMPLETADO ===');
-        
-        // Recargar datos desde Supabase
-        setTimeout(() => {
-          window.location.reload();
-        }, 1000);
-        
-      } catch (error) {
-        console.error('Error en reinicio:', error);
-      }
-    };
-    
-    // Calcular tiempo hasta el próximo reinicio
-    const calcularTiempoHastaReinicio = () => {
-      const ahora = new Date();
-      const [hora, minuto] = horaReinicio.split(':').map(Number);
-      let proximoReinicio = new Date();
-      proximoReinicio.setHours(hora, minuto, 0, 0);
-      
-      // Si ya pasó la hora hoy, programar para mañana
-      if (proximoReinicio <= ahora) {
-        proximoReinicio.setDate(proximoReinicio.getDate() + 1);
-      }
-      
-      return proximoReinicio.getTime() - ahora.getTime();
-    };
-    
-    // Verificar inmediatamente si es hora
-    verificarReinicio();
-    
-    // Programar timeout para el próximo reinicio
-    const tiempoRestante = calcularTiempoHastaReinicio();
-    const timeout = setTimeout(verificarReinicio, tiempoRestante);
-    
-    return () => clearTimeout(timeout);
-  }, [horaReinicio, usuarioActual, usuarioId, cuentas, modoSeguimiento, temaOscuro]);
+  // Reinicio automático desactivado para evitar bucles
+  // El reinicio se hará manualmente desde la interfaz
 
   const handleLogin = (usuario) => {
     let user = { ...usuario };
@@ -650,10 +607,16 @@ function App() {
     }
     
     const now = new Date();
-    const fecha = now.toISOString().split('T')[0]; // Formato YYYY-MM-DD
+    const diaPersonalizado = obtenerDiaPersonalizado(now);
     const cuenta = cuentas.find(c => c.id === id);
     
-    if (!cuenta || cuenta.ultimoIngreso === fecha) return;
+    if (!cuenta) return;
+    
+    if (cuenta.ultimoIngreso === diaPersonalizado) {
+      setMensajeError(`Ya marcaste ingreso hoy. Próximo reinicio a las ${horaReinicio}`);
+      setTimeout(() => setMensajeError(''), 3000);
+      return;
+    }
     
     // Actualizar estado local PRIMERO (respuesta inmediata)
     setCuentas(prev =>
@@ -662,8 +625,8 @@ function App() {
           return {
             ...c,
             ingresado: true,
-            ultimoIngreso: fecha,
-            historial: [...c.historial, `${fecha} ${now.toLocaleTimeString()}`]
+            ultimoIngreso: diaPersonalizado,
+            historial: [...c.historial, `${diaPersonalizado} ${now.toLocaleTimeString()}`]
           };
         }
         return c;
@@ -675,7 +638,7 @@ function App() {
       await Promise.all([
         cuentaService.actualizar(id, {
           ingresado: true,
-          ultimo_ingreso: fecha
+          ultimo_ingreso: diaPersonalizado
         }),
         historialService.crear({
           cuenta_id: id,
@@ -705,7 +668,7 @@ function App() {
   React.useEffect(() => {
     window.alternarIngreso = (id) => {
       setCuentas(prev => prev.map(c => {
-        if (c.id === id && c.ultimoIngreso !== hoy) {
+        if (c.id === id && c.ultimoIngreso !== diaPersonalizadoActual) {
           const now = new Date();
           const fecha = now.toLocaleDateString();
           const hora = now.toLocaleTimeString();
@@ -933,7 +896,7 @@ function App() {
     acc[key].push(c);
     return acc;
   }, {});
-  const faltantesHoy = cuentas.filter(c => c.ultimoIngreso !== hoy).length;
+  const faltantesHoy = cuentas.filter(c => c.ultimoIngreso !== diaPersonalizadoActual).length;
   const totalPjs = cuentas.reduce((a, c) => a + (c.pejotas?.length || 0), 0);
   const totalMedallas = cuentas.reduce(
     (a, c) => a + (c.pejotas ? c.pejotas.reduce((m, pj) => m + (pj?.medallas || 0), 0) : 0),
@@ -1091,7 +1054,7 @@ function App() {
           )}
           <AccountList
           cuentasPorCorreo={cuentasPorCorreo}
-          hoy={hoy}
+          hoy={diaPersonalizadoActual}
           mostrarDetalles={mostrarDetalles}
           setMostrarDetalles={setMostrarDetalles}
           alternarIngreso={modoSeguimiento ? null : alternarIngreso}
@@ -1152,7 +1115,7 @@ function App() {
         <PjDetailsModal 
           cuenta={cuentas.find(c => c.id === mostrarDetalles)}
           cuentas={cuentas}
-          hoy={hoy}
+          hoy={diaPersonalizadoActual}
           alternarIngreso={modoSeguimiento ? null : alternarIngreso}
           modoSeguimiento={modoSeguimiento}
           onClose={() => setMostrarDetalles(null)}
@@ -1167,7 +1130,7 @@ function App() {
         <PjDetailsModal
           cuenta={modalBusquedaPJ.cuenta}
           cuentas={cuentas}
-          hoy={hoy}
+          hoy={diaPersonalizadoActual}
           alternarIngreso={modoSeguimiento ? null : alternarIngreso}
           modoSeguimiento={modoSeguimiento}
           onClose={() => setModalBusquedaPJ(null)}
@@ -1360,7 +1323,7 @@ function ResumenStats({ faltantesHoy, totalPjs, totalMedallas, totalWones, tiemp
             </div>
             {editandoHora && (
               <span className="time-settings-pop absolute right-2 top-10 z-20">
-                <TimeSettings horaReinicio={horaReinicio} setHoraReinicio={setHoraReinicio} />
+                <TimeSettings horaReinicio={horaReinicio} onHoraChange={cambiarHoraReinicio} />
               </span>
             )}
           </div>
